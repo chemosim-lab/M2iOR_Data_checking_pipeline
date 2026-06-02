@@ -1,0 +1,65 @@
+{
+  "Receptor": [
+    "Order",
+    "Species",
+    "Gene Name",
+    "UniProt ID",
+    "Mutation",
+    "Tag",
+    "Sequence"
+  ],
+  "Co-Receptor": [
+    "Order",
+    "Species",
+    "Gene Name",
+    "UniProt ID",
+    "Mutation",
+    "Sequence"
+  ],
+  "Molecule": [
+    "Molecule Name",
+    "CID",
+    "CAS",
+    "InChIKey",
+    "SMILES",
+    "Solvent used for dilution",
+    "Mixture"
+  ],
+  "Response": [
+    "Responsive",
+    "Parameter",
+    "Value",
+    "Unit",
+    "Value Nature",
+    "Concentration",
+    "Concentration Unit",
+    "Nbr. measurements",
+    "Multimer responsive to control ligand (VUAA1 , …)"
+  ],
+  "Assay": [
+    "Experimental technique",
+    "Recording System",
+    "Type",
+    "Expression system",
+    "Expression cell type / line",
+    "Expression driver",
+    "Co-transfection",
+    "Odor delivery system",
+    "Stimulation Flux",
+    "Stimulation Flux Unit",
+    "Main Flux",
+    "Main Flux Unit",
+    "Stimulation duration",
+    "Stimulation duration unit",
+    "Larva or adult"
+  ],
+  "Source": [
+    "Reference",
+    "DOI",
+    "Reference Position"
+  ],
+  "Backoffice": [
+    "Collector",
+    "Extra"
+  ]
+}

@@ -1,0 +1,1304 @@
+{
+    "entryType": "UniProtKB reviewed (Swiss-Prot)",
+    "primaryAccession": "Q9VLE5",
+    "uniProtkbId": "OR30A_DROME",
+    "entryAudit": {
+        "firstPublicDate": "2001-06-01",
+        "lastAnnotationUpdateDate": "2026-01-28",
+        "lastSequenceUpdateDate": "2004-01-16",
+        "entryVersion": 141,
+        "sequenceVersion": 4
+    },
+    "annotationScore": 3.0,
+    "organism": {
+        "scientificName": "Drosophila melanogaster",
+        "commonName": "Fruit fly",
+        "taxonId": 7227,
+        "lineage": [
+            "Eukaryota",
+            "Metazoa",
+            "Ecdysozoa",
+            "Arthropoda",
+            "Hexapoda",
+            "Insecta",
+            "Pterygota",
+            "Neoptera",
+            "Endopterygota",
+            "Diptera",
+            "Brachycera",
+            "Muscomorpha",
+            "Ephydroidea",
+            "Drosophilidae",
+            "Drosophila",
+            "Sophophora"
+        ]
+    },
+    "proteinExistence": "3: Inferred from homology",
+    "proteinDescription": {
+        "recommendedName": {
+            "fullName": {
+                "value": "Odorant receptor 30a"
+            }
+        }
+    },
+    "genes": [
+        {
+            "geneName": {
+                "value": "Or30a"
+            },
+            "orfNames": [
+                {
+                    "value": "CG13106"
+                }
+            ]
+        }
+    ],
+    "comments": [
+        {
+            "texts": [
+                {
+                    "evidences": [
+                        {
+                            "evidenceCode": "ECO: 0000269",
+                            "source": "PubMed",
+                            "id": "21613503"
+                        },
+                        {
+                            "evidenceCode": "ECO: 0000269",
+                            "source": "PubMed",
+                            "id": "21857978"
+                        }
+                    ],
+                    "value": "Odorant receptor which mediates acceptance or avoidance behavior, depending on its substrates. The odorant receptor repertoire encodes a large collection of odor stimuli that vary widely in identity, intensity, and duration. May form a complex with Orco to form odorant-sensing units, providing sensitive and prolonged odorant signaling and calcium permeability. Involved in the behavioral responses to propyl acetate and anisole"
+                }
+            ],
+            "commentType": "FUNCTION"
+        },
+        {
+            "texts": [
+                {
+                    "evidences": [
+                        {
+                            "evidenceCode": "ECO: 0000250"
+                        }
+                    ],
+                    "value": "Interacts with Orco. Complexes exist early in the endomembrane system in olfactory sensory neurons (OSNs), coupling these complexes to the conserved ciliary trafficking pathway (By similarity)"
+                }
+            ],
+            "commentType": "SUBUNIT"
+        },
+        {
+            "commentType": "SUBCELLULAR LOCATION",
+            "subcellularLocations": [
+                {
+                    "location": {
+                        "evidences": [
+                            {
+                                "evidenceCode": "ECO: 0000250"
+                            }
+                        ],
+                        "value": "Cell membrane",
+                        "id": "SL-0039"
+                    },
+                    "topology": {
+                        "evidences": [
+                            {
+                                "evidenceCode": "ECO: 0000250"
+                            }
+                        ],
+                        "value": "Multi-pass membrane protein",
+                        "id": "SL-9909"
+                    }
+                }
+            ]
+        },
+        {
+            "texts": [
+                {
+                    "value": "The atypical heteromeric and topological design of the odorant receptors appears to be an insect-specific solution for odor recognition, making the OR/Orco complex an attractive target for the development of highly selective insect repellents to disrupt olfactory-mediated host-seeking behaviors of insect disease vectors. Odor-evoked OR currents are independent of known G-protein-coupled second messenger pathways"
+                }
+            ],
+            "commentType": "MISCELLANEOUS"
+        },
+        {
+            "texts": [
+                {
+                    "evidences": [
+                        {
+                            "evidenceCode": "ECO: 0000305"
+                        }
+                    ],
+                    "value": "Belongs to the insect chemoreceptor superfamily. Heteromeric odorant receptor channel (TC 1.A.69) family. Or30a subfamily"
+                }
+            ],
+            "commentType": "SIMILARITY"
+        }
+    ],
+    "features": [
+        {
+            "type": "Chain",
+            "location": {
+                "start": {
+                    "value": 1,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 377,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Odorant receptor 30a",
+            "featureId": "PRO_0000174237"
+        },
+        {
+            "type": "Topological domain",
+            "location": {
+                "start": {
+                    "value": 1,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 34,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Cytoplasmic",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Transmembrane",
+            "location": {
+                "start": {
+                    "value": 35,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 55,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Helical; Name=1",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Topological domain",
+            "location": {
+                "start": {
+                    "value": 56,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 65,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Extracellular",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Transmembrane",
+            "location": {
+                "start": {
+                    "value": 66,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 86,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Helical; Name=2",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Topological domain",
+            "location": {
+                "start": {
+                    "value": 87,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 127,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Cytoplasmic",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Transmembrane",
+            "location": {
+                "start": {
+                    "value": 128,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 148,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Helical; Name=3",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Topological domain",
+            "location": {
+                "start": {
+                    "value": 149,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 172,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Extracellular",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Transmembrane",
+            "location": {
+                "start": {
+                    "value": 173,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 193,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Helical; Name=4",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Topological domain",
+            "location": {
+                "start": {
+                    "value": 194,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 254,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Cytoplasmic",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Transmembrane",
+            "location": {
+                "start": {
+                    "value": 255,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 275,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Helical; Name=5",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Topological domain",
+            "location": {
+                "start": {
+                    "value": 276,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 280,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Extracellular",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Transmembrane",
+            "location": {
+                "start": {
+                    "value": 281,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 301,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Helical; Name=6",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Topological domain",
+            "location": {
+                "start": {
+                    "value": 302,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 344,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Cytoplasmic",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Transmembrane",
+            "location": {
+                "start": {
+                    "value": 345,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 365,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Helical; Name=7",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        },
+        {
+            "type": "Topological domain",
+            "location": {
+                "start": {
+                    "value": 366,
+                    "modifier": "EXACT"
+                },
+                "end": {
+                    "value": 377,
+                    "modifier": "EXACT"
+                }
+            },
+            "description": "Extracellular",
+            "evidences": [
+                {
+                    "evidenceCode": "ECO: 0000255"
+                }
+            ]
+        }
+    ],
+    "keywords": [
+        {
+            "id": "KW-1003",
+            "category": "Cellular component",
+            "name": "Cell membrane"
+        },
+        {
+            "id": "KW-0472",
+            "category": "Cellular component",
+            "name": "Membrane"
+        },
+        {
+            "id": "KW-0552",
+            "category": "Biological process",
+            "name": "Olfaction"
+        },
+        {
+            "id": "KW-0675",
+            "category": "Molecular function",
+            "name": "Receptor"
+        },
+        {
+            "id": "KW-1185",
+            "category": "Technical term",
+            "name": "Reference proteome"
+        },
+        {
+            "id": "KW-0716",
+            "category": "Biological process",
+            "name": "Sensory transduction"
+        },
+        {
+            "id": "KW-0807",
+            "category": "Molecular function",
+            "name": "Transducer"
+        },
+        {
+            "id": "KW-0812",
+            "category": "Domain",
+            "name": "Transmembrane"
+        },
+        {
+            "id": "KW-1133",
+            "category": "Domain",
+            "name": "Transmembrane helix"
+        }
+    ],
+    "references": [
+        {
+            "referenceNumber": 1,
+            "citation": {
+                "id": "10731132",
+                "citationType": "journal article",
+                "authors": [
+                    "Adams M.D.",
+                    "Celniker S.E.",
+                    "Holt R.A.",
+                    "Evans C.A.",
+                    "Gocayne J.D.",
+                    "Amanatides P.G.",
+                    "Scherer S.E.",
+                    "Li P.W.",
+                    "Hoskins R.A.",
+                    "Galle R.F.",
+                    "George R.A.",
+                    "Lewis S.E.",
+                    "Richards S.",
+                    "Ashburner M.",
+                    "Henderson S.N.",
+                    "Sutton G.G.",
+                    "Wortman J.R.",
+                    "Yandell M.D.",
+                    "Zhang Q.",
+                    "Chen L.X.",
+                    "Brandon R.C.",
+                    "Rogers Y.-H.C.",
+                    "Blazej R.G.",
+                    "Champe M.",
+                    "Pfeiffer B.D.",
+                    "Wan K.H.",
+                    "Doyle C.",
+                    "Baxter E.G.",
+                    "Helt G.",
+                    "Nelson C.R.",
+                    "Miklos G.L.G.",
+                    "Abril J.F.",
+                    "Agbayani A.",
+                    "An H.-J.",
+                    "Andrews-Pfannkoch C.",
+                    "Baldwin D.",
+                    "Ballew R.M.",
+                    "Basu A.",
+                    "Baxendale J.",
+                    "Bayraktaroglu L.",
+                    "Beasley E.M.",
+                    "Beeson K.Y.",
+                    "Benos P.V.",
+                    "Berman B.P.",
+                    "Bhandari D.",
+                    "Bolshakov S.",
+                    "Borkova D.",
+                    "Botchan M.R.",
+                    "Bouck J.",
+                    "Brokstein P.",
+                    "Brottier P.",
+                    "Burtis K.C.",
+                    "Busam D.A.",
+                    "Butler H.",
+                    "Cadieu E.",
+                    "Center A.",
+                    "Chandra I.",
+                    "Cherry J.M.",
+                    "Cawley S.",
+                    "Dahlke C.",
+                    "Davenport L.B.",
+                    "Davies P.",
+                    "de Pablos B.",
+                    "Delcher A.",
+                    "Deng Z.",
+                    "Mays A.D.",
+                    "Dew I.",
+                    "Dietz S.M.",
+                    "Dodson K.",
+                    "Doup L.E.",
+                    "Downes M.",
+                    "Dugan-Rocha S.",
+                    "Dunkov B.C.",
+                    "Dunn P.",
+                    "Durbin K.J.",
+                    "Evangelista C.C.",
+                    "Ferraz C.",
+                    "Ferriera S.",
+                    "Fleischmann W.",
+                    "Fosler C.",
+                    "Gabrielian A.E.",
+                    "Garg N.S.",
+                    "Gelbart W.M.",
+                    "Glasser K.",
+                    "Glodek A.",
+                    "Gong F.",
+                    "Gorrell J.H.",
+                    "Gu Z.",
+                    "Guan P.",
+                    "Harris M.",
+                    "Harris N.L.",
+                    "Harvey D.A.",
+                    "Heiman T.J.",
+                    "Hernandez J.R.",
+                    "Houck J.",
+                    "Hostin D.",
+                    "Houston K.A.",
+                    "Howland T.J.",
+                    "Wei M.-H.",
+                    "Ibegwam C.",
+                    "Jalali M.",
+                    "Kalush F.",
+                    "Karpen G.H.",
+                    "Ke Z.",
+                    "Kennison J.A.",
+                    "Ketchum K.A.",
+                    "Kimmel B.E.",
+                    "Kodira C.D.",
+                    "Kraft C.L.",
+                    "Kravitz S.",
+                    "Kulp D.",
+                    "Lai Z.",
+                    "Lasko P.",
+                    "Lei Y.",
+                    "Levitsky A.A.",
+                    "Li J.H.",
+                    "Li Z.",
+                    "Liang Y.",
+                    "Lin X.",
+                    "Liu X.",
+                    "Mattei B.",
+                    "McIntosh T.C.",
+                    "McLeod M.P.",
+                    "McPherson D.",
+                    "Merkulov G.",
+                    "Milshina N.V.",
+                    "Mobarry C.",
+                    "Morris J.",
+                    "Moshrefi A.",
+                    "Mount S.M.",
+                    "Moy M.",
+                    "Murphy B.",
+                    "Murphy L.",
+                    "Muzny D.M.",
+                    "Nelson D.L.",
+                    "Nelson D.R.",
+                    "Nelson K.A.",
+                    "Nixon K.",
+                    "Nusskern D.R.",
+                    "Pacleb J.M.",
+                    "Palazzolo M.",
+                    "Pittman G.S.",
+                    "Pan S.",
+                    "Pollard J.",
+                    "Puri V.",
+                    "Reese M.G.",
+                    "Reinert K.",
+                    "Remington K.",
+                    "Saunders R.D.C.",
+                    "Scheeler F.",
+                    "Shen H.",
+                    "Shue B.C.",
+                    "Siden-Kiamos I.",
+                    "Simpson M.",
+                    "Skupski M.P.",
+                    "Smith T.J.",
+                    "Spier E.",
+                    "Spradling A.C.",
+                    "Stapleton M.",
+                    "Strong R.",
+                    "Sun E.",
+                    "Svirskas R.",
+                    "Tector C.",
+                    "Turner R.",
+                    "Venter E.",
+                    "Wang A.H.",
+                    "Wang X.",
+                    "Wang Z.-Y.",
+                    "Wassarman D.A.",
+                    "Weinstock G.M.",
+                    "Weissenbach J.",
+                    "Williams S.M.",
+                    "Woodage T.",
+                    "Worley K.C.",
+                    "Wu D.",
+                    "Yang S.",
+                    "Yao Q.A.",
+                    "Ye J.",
+                    "Yeh R.-F.",
+                    "Zaveri J.S.",
+                    "Zhan M.",
+                    "Zhang G.",
+                    "Zhao Q.",
+                    "Zheng L.",
+                    "Zheng X.H.",
+                    "Zhong F.N.",
+                    "Zhong W.",
+                    "Zhou X.",
+                    "Zhu S.C.",
+                    "Zhu X.",
+                    "Smith H.O.",
+                    "Gibbs R.A.",
+                    "Myers E.W.",
+                    "Rubin G.M.",
+                    "Venter J.C."
+                ],
+                "citationCrossReferences": [
+                    {
+                        "database": "PubMed",
+                        "id": "10731132"
+                    },
+                    {
+                        "database": "DOI",
+                        "id": "10.1126/science.287.5461.2185"
+                    }
+                ],
+                "title": "The genome sequence of Drosophila melanogaster.",
+                "publicationDate": "2000",
+                "journal": "Science",
+                "firstPage": "2185",
+                "lastPage": "2195",
+                "volume": "287"
+            },
+            "referencePositions": ["NUCLEOTIDE SEQUENCE [LARGE SCALE GENOMIC DNA
+            ]"
+        ],
+        "referenceComments": [
+            {
+                "value": "Berkeley",
+                "type": "STRAIN"
+            }
+        ]
+    },
+    {
+        "referenceNumber": 2,
+        "citation": {
+            "id": "12537572",
+            "citationType": "journal article",
+            "authors": [
+                "Misra S.",
+                "Crosby M.A.",
+                "Mungall C.J.",
+                "Matthews B.B.",
+                "Campbell K.S.",
+                "Hradecky P.",
+                "Huang Y.",
+                "Kaminker J.S.",
+                "Millburn G.H.",
+                "Prochnik S.E.",
+                "Smith C.D.",
+                "Tupy J.L.",
+                "Whitfield E.J.",
+                "Bayraktaroglu L.",
+                "Berman B.P.",
+                "Bettencourt B.R.",
+                "Celniker S.E.",
+                "de Grey A.D.N.J.",
+                "Drysdale R.A.",
+                "Harris N.L.",
+                "Richter J.",
+                "Russo S.",
+                "Schroeder A.J.",
+                "Shu S.Q.",
+                "Stapleton M.",
+                "Yamada C.",
+                "Ashburner M.",
+                "Gelbart W.M.",
+                "Rubin G.M.",
+                "Lewis S.E."
+            ],
+            "citationCrossReferences": [
+                {
+                    "database": "PubMed",
+                    "id": "12537572"
+                },
+                {
+                    "database": "DOI",
+                    "id": "10.1186/gb-2002-3-12-research0083"
+                }
+            ],
+            "title": "Annotation of the Drosophila melanogaster euchromatic genome: a systematic review.",
+            "publicationDate": "2002",
+            "journal": "Genome Biol.",
+            "firstPage": "RESEARCH0083.1",
+            "lastPage": "RESEARCH0083.22",
+            "volume": "3"
+        },
+        "referencePositions": [
+            "GENOME REANNOTATION"
+        ],
+        "referenceComments": [
+            {
+                "value": "Berkeley",
+                "type": "STRAIN"
+            }
+        ]
+    },
+    {
+        "referenceNumber": 3,
+        "citation": {
+            "id": "21613503",
+            "citationType": "journal article",
+            "authors": [
+                "Montague S.A.",
+                "Mathew D.",
+                "Carlson J.R."
+            ],
+            "citationCrossReferences": [
+                {
+                    "database": "PubMed",
+                    "id": "21613503"
+                },
+                {
+                    "database": "DOI",
+                    "id": "10.1523/jneurosci.6254-10.2011"
+                }
+            ],
+            "title": "Similar odorants elicit different behavioral and physiological responses, some supersustained.",
+            "publicationDate": "2011",
+            "journal": "J. Neurosci.",
+            "firstPage": "7891",
+            "lastPage": "7899",
+            "volume": "31"
+        },
+        "referencePositions": [
+            "FUNCTION"
+        ]
+    },
+    {
+        "referenceNumber": 4,
+        "citation": {
+            "id": "21857978",
+            "citationType": "journal article",
+            "authors": [
+                "Hoare D.J.",
+                "Humble J.",
+                "Jin D.",
+                "Gilding N.",
+                "Petersen R.",
+                "Cobb M.",
+                "McCrohan C."
+            ],
+            "citationCrossReferences": [
+                {
+                    "database": "PubMed",
+                    "id": "21857978"
+                },
+                {
+                    "database": "DOI",
+                    "id": "10.1371/journal.pone.0022996"
+                }
+            ],
+            "title": "Modeling peripheral olfactory coding in Drosophila larvae.",
+            "publicationDate": "2011",
+            "journal": "PLoS ONE",
+            "firstPage": "E22996",
+            "lastPage": "E22996",
+            "volume": "6"
+        },
+        "referencePositions": [
+            "FUNCTION"
+        ]
+    }
+],
+"uniProtKBCrossReferences": [
+    {
+        "database": "EMBL",
+        "id": "AE014134",
+        "properties": [
+            {
+                "key": "ProteinId",
+                "value": "AAF52748.3"
+            },
+            {
+                "key": "Status",
+                "value": "-"
+            },
+            {
+                "key": "MoleculeType",
+                "value": "Genomic_DNA"
+            }
+        ]
+    },
+    {
+        "database": "RefSeq",
+        "id": "NP_523520.2",
+        "properties": [
+            {
+                "key": "NucleotideSequenceId",
+                "value": "NM_078796.3"
+            }
+        ]
+    },
+    {
+        "database": "AlphaFoldDB",
+        "id": "Q9VLE5",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "SMR",
+        "id": "Q9VLE5",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "FunCoup",
+        "id": "Q9VLE5",
+        "properties": [
+            {
+                "key": "Number of interactors",
+                "value": "39"
+            }
+        ]
+    },
+    {
+        "database": "STRING",
+        "id": "7227.FBpp0079371",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "PaxDb",
+        "id": "7227-FBpp0079371",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "EnsemblMetazoa",
+        "id": "FBtr0079770",
+        "properties": [
+            {
+                "key": "ProteinId",
+                "value": "FBpp0079371"
+            },
+            {
+                "key": "GeneId",
+                "value": "FBgn0032096"
+            }
+        ]
+    },
+    {
+        "database": "GeneID",
+        "id": "34236",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "KEGG",
+        "id": "dme:Dmel_CG13106",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "AGR",
+        "id": "FB:FBgn0032096",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "CTD",
+        "id": "34236",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "FlyBase",
+        "id": "FBgn0032096",
+        "properties": [
+            {
+                "key": "GeneName",
+                "value": "Or30a"
+            }
+        ]
+    },
+    {
+        "database": "VEuPathDB",
+        "id": "VectorBase:FBgn0032096",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "eggNOG",
+        "id": "ENOG502STQW",
+        "properties": [
+            {
+                "key": "ToxonomicScope",
+                "value": "Eukaryota"
+            }
+        ]
+    },
+    {
+        "database": "HOGENOM",
+        "id": "CLU_033399_9_0_1",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "InParanoid",
+        "id": "Q9VLE5",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "OMA",
+        "id": "YIPYTNM",
+        "properties": [
+            {
+                "key": "Fingerprint",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "OrthoDB",
+        "id": "7677057at2759",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "PhylomeDB",
+        "id": "Q9VLE5",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "BioGRID-ORCS",
+        "id": "34236",
+        "properties": [
+            {
+                "key": "hits",
+                "value": "0 hits in 1 CRISPR screen"
+            }
+        ]
+    },
+    {
+        "database": "GenomeRNAi",
+        "id": "34236",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "PRO",
+        "id": "PR:Q9VLE5",
+        "properties": [
+            {
+                "key": "Description",
+                "value": "-"
+            }
+        ]
+    },
+    {
+        "database": "Proteomes",
+        "id": "UP000000803",
+        "properties": [
+            {
+                "key": "Component",
+                "value": "Chromosome 2L"
+            }
+        ]
+    },
+    {
+        "database": "ExpressionAtlas",
+        "id": "Q9VLE5",
+        "properties": [
+            {
+                "key": "ExpressionPatterns",
+                "value": "baseline and differential"
+            }
+        ]
+    },
+    {
+        "database": "GO",
+        "id": "GO: 0034703",
+        "properties": [
+            {
+                "key": "GoTerm",
+                "value": "C:cation channel complex"
+            },
+            {
+                "key": "GoEvidenceType",
+                "value": "ISS:FlyBase"
+            }
+        ]
+    },
+    {
+        "database": "GO",
+        "id": "GO: 0032590",
+        "properties": [
+            {
+                "key": "GoTerm",
+                "value": "C:dendrite membrane"
+            },
+            {
+                "key": "GoEvidenceType",
+                "value": "ISS:FlyBase"
+            }
+        ]
+    },
+    {
+        "database": "GO",
+        "id": "GO: 0005886",
+        "properties": [
+            {
+                "key": "GoTerm",
+                "value": "C:plasma membrane"
+            },
+            {
+                "key": "GoEvidenceType",
+                "value": "ISS:FlyBase"
+            }
+        ]
+    },
+    {
+        "database": "GO",
+        "id": "GO: 0170020",
+        "properties": [
+            {
+                "key": "GoTerm",
+                "value": "F:ionotropic olfactory receptor activity"
+            },
+            {
+                "key": "GoEvidenceType",
+                "value": "ISS:FlyBase"
+            }
+        ]
+    },
+    {
+        "database": "GO",
+        "id": "GO: 0005549",
+        "properties": [
+            {
+                "key": "GoTerm",
+                "value": "F:odorant binding"
+            },
+            {
+                "key": "GoEvidenceType",
+                "value": "ISS:FlyBase"
+            }
+        ]
+    },
+    {
+        "database": "GO",
+        "id": "GO: 0004984",
+        "properties": [
+            {
+                "key": "GoTerm",
+                "value": "F:olfactory receptor activity"
+            },
+            {
+                "key": "GoEvidenceType",
+                "value": "IBA:GO_Central"
+            }
+        ]
+    },
+    {
+        "database": "GO",
+        "id": "GO: 0050911",
+        "properties": [
+            {
+                "key": "GoTerm",
+                "value": "P:detection of chemical stimulus involved in sensory perception of smell"
+            },
+            {
+                "key": "GoEvidenceType",
+                "value": "IMP:FlyBase"
+            }
+        ],
+        "evidences": [
+            {
+                "evidenceCode": "ECO: 0000315",
+                "source": "PubMed",
+                "id": "15882644"
+            }
+        ]
+    },
+    {
+        "database": "GO",
+        "id": "GO: 0007165",
+        "properties": [
+            {
+                "key": "GoTerm",
+                "value": "P:signal transduction"
+            },
+            {
+                "key": "GoEvidenceType",
+                "value": "IEA:UniProtKB-KW"
+            }
+        ]
+    },
+    {
+        "database": "InterPro",
+        "id": "IPR004117",
+        "properties": [
+            {
+                "key": "EntryName",
+                "value": "7tm6_olfct_rcpt"
+            }
+        ]
+    },
+    {
+        "database": "PANTHER",
+        "id": "PTHR21137",
+        "properties": [
+            {
+                "key": "EntryName",
+                "value": "ODORANT RECEPTOR"
+            },
+            {
+                "key": "MatchStatus",
+                "value": "1"
+            }
+        ]
+    },
+    {
+        "database": "PANTHER",
+        "id": "PTHR21137:SF3",
+        "properties": [
+            {
+                "key": "EntryName",
+                "value": "ODORANT RECEPTOR 30A-RELATED"
+            },
+            {
+                "key": "MatchStatus",
+                "value": "1"
+            }
+        ]
+    },
+    {
+        "database": "Pfam",
+        "id": "PF02949",
+        "properties": [
+            {
+                "key": "EntryName",
+                "value": "7tm_6"
+            },
+            {
+                "key": "MatchStatus",
+                "value": "1"
+            }
+        ]
+    }
+],
+"sequence": {
+    "value": "MELKSMDPVEMPIFGSTLKLMKFWSYLFVHNWRRYVAMTPYIIINCTQYVDIYLSTESLDFIIRNVYLAVLFTNTVVRGVLLCVQRFSYERFINILKSFYIELLQSDDPIINILVKETTRLSVLISRINLLMGCCTCIGFVTYPIFGSERVLPYGMYLPTIDEYKYASPYYEIFFVIQAIMAPMGCCMYIPYTNMVVTFTLFAILMCRVLQHKLRSLEKLKNEQVRGEIIWCIKYQLKLSGFVDSMNALNTHLHLVEFLCFGAMLCVLLFSLIIAQTIAQTVIVIAYMVMIFANSVVLYYVANELYFQSFDIAIAAYESNWMDFDVDTQKTLKFLIMRSQKPLAILVGGTYPMNLKMLQSLLNAIYSFFTLLRRVYG",
+    "length": 377,
+    "molWeight": 43868,
+    "crc64": "00161A2582D9933F",
+    "md5": "E5E03D356A0AE39FEC5FAF2D652D115B"
+},
+"extraAttributes": {
+    "countByCommentType": {
+        "FUNCTION": 1,
+        "SUBUNIT": 1,
+        "SUBCELLULAR LOCATION": 1,
+        "MISCELLANEOUS": 1,
+        "SIMILARITY": 1
+    },
+    "countByFeatureType": {
+        "Chain": 1,
+        "Topological domain": 8,
+        "Transmembrane": 7
+    },
+    "uniParcId": "UPI0000007479"
+}
+}

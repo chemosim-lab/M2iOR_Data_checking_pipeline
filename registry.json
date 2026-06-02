@@ -1,0 +1,177 @@
+[
+  {
+    "study_id": "00_rawdata_ext_04_nA_update_tem_cas_fill",
+    "file_path": "input/M2iOR_files/260419_ThanetP_data_complete/00_rawdata_extraction/00_rawdata_ext_04_nA_update_tem_cas_fill.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "The Excel file must contain at least 2 sheets (sheets found: ['Sheet1']): input/M2iOR_files/260419_ThanetP_data_complete/00_rawdata_extraction/00_rawdata_ext_04_nA_update_tem_cas_fill.xlsx"
+  },
+  {
+    "study_id": "00_rawdata_ext_06a_fluores_upd_tem_cas_fill",
+    "file_path": "input/M2iOR_files/260419_ThanetP_data_complete/00_rawdata_extraction/00_rawdata_ext_06a_fluores_upd_tem_cas_fill.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "The Excel file must contain at least 2 sheets (sheets found: ['Sheet1']): input/M2iOR_files/260419_ThanetP_data_complete/00_rawdata_extraction/00_rawdata_ext_06a_fluores_upd_tem_cas_fill.xlsx"
+  },
+  {
+    "study_id": "03_ThanetP_data_complete",
+    "file_path": "input/M2iOR_files/260419_ThanetP_data_complete/03_ThanetP_data_complete.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "The Excel file must contain at least 2 sheets (sheets found: ['Sheet1']): input/M2iOR_files/260419_ThanetP_data_complete/03_ThanetP_data_complete.xlsx"
+  },
+  {
+    "study_id": "Reference_list",
+    "file_path": "input/M2iOR_files/260419_ThanetP_data_complete/Reference_list.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "The Excel file must contain at least 2 sheets (sheets found: ['Sheet1']): input/M2iOR_files/260419_ThanetP_data_complete/Reference_list.xlsx"
+  },
+  {
+    "study_id": "Chang_CurrBiol-2023",
+    "file_path": "input/M2iOR_files/Chang_CurrBiol-2023.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T18:27:32.831752",
+    "error_message": null
+  },
+  {
+    "study_id": "Guo_MBE-2021",
+    "file_path": "input/M2iOR_files/Guo_MBE-2021.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T09:51:57.071976",
+    "error_message": null
+  },
+  {
+    "study_id": "Kreher_Neuron-2005",
+    "file_path": "input/M2iOR_files/Kreher_Neuron-2005.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-06-02T16:56:50.191583",
+    "error_message": "(enrich_with_mutations) Missing column 'sequence_ref' in df"
+  },
+  {
+    "study_id": "Kreher_Neuron-2008",
+    "file_path": "input/M2iOR_files/Kreher_Neuron-2008.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T09:51:57.310384",
+    "error_message": null
+  },
+  {
+    "study_id": "Liu_fphys-2020",
+    "file_path": "input/M2iOR_files/Liu_fphys-2020.xlsx",
+    "status": "FAILED",
+    "processed_at": "2026-05-27T18:37:52.954558",
+    "error_message": "1 receptor row(s) are missing a UniProt ID (data row index: [132])"
+  },
+  {
+    "study_id": "Liu_fphys-2022",
+    "file_path": "input/M2iOR_files/Liu_fphys-2022.xlsx",
+    "status": "FAILED",
+    "processed_at": "2026-05-27T18:37:52.980995",
+    "error_message": "54 receptor row(s) are missing a UniProt ID (data row index: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53])"
+  },
+  {
+    "study_id": "Mathew_PNAS-2013",
+    "file_path": "input/M2iOR_files/Mathew_PNAS-2013.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T09:51:57.455771",
+    "error_message": null
+  },
+  {
+    "study_id": "Mo_JAFC-2023",
+    "file_path": "input/M2iOR_files/Mo_JAFC-2023.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T18:57:18.404326",
+    "error_message": null
+  },
+  {
+    "study_id": "Munch2016",
+    "file_path": "input/M2iOR_files/Munch2016.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T18:57:42.028202",
+    "error_message": null
+  },
+  {
+    "study_id": "Pask_NatCommun-2017",
+    "file_path": "input/M2iOR_files/Pask_NatCommun-2017.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T18:57:42.247812",
+    "error_message": null
+  },
+  {
+    "study_id": "Roberts_MEC-2022",
+    "file_path": "input/M2iOR_files/Roberts_MEC-2022.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T18:57:42.371961",
+    "error_message": null
+  },
+  {
+    "study_id": "Roberts_fcellneuro-2021",
+    "file_path": "input/M2iOR_files/Roberts_fcellneuro-2021.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T18:57:44.040015",
+    "error_message": null
+  },
+  {
+    "study_id": "Slone_PNAS-2017",
+    "file_path": "input/M2iOR_files/Slone_PNAS-2017.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T18:57:44.333985",
+    "error_message": null
+  },
+  {
+    "study_id": "Tanaka_CurrBiol-2009",
+    "file_path": "input/M2iOR_files/Tanaka_CurrBiol-2009.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T18:57:47.477310",
+    "error_message": null
+  },
+  {
+    "study_id": "Wang_PNAS-2010",
+    "file_path": "input/M2iOR_files/Wang_PNAS-2010.xlsx",
+    "status": "FAILED",
+    "processed_at": "2026-05-27T18:37:54.511559",
+    "error_message": "too many values to unpack (expected 2, got 4)"
+  },
+  {
+    "study_id": "Wang_insects-2024",
+    "file_path": "input/M2iOR_files/Wang_insects-2024.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T18:57:47.823451",
+    "error_message": null
+  },
+  {
+    "study_id": "Yan_jinphys-2015",
+    "file_path": "input/M2iOR_files/Yan_jinphys-2015.xlsx",
+    "status": "FAILED",
+    "processed_at": "2026-05-27T18:37:54.644581",
+    "error_message": "too many values to unpack (expected 2, got 3)"
+  },
+  {
+    "study_id": "Yuvaraj_IBMB-2018",
+    "file_path": "input/M2iOR_files/Yuvaraj_IBMB-2018.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T18:57:51.182362",
+    "error_message": null
+  },
+  {
+    "study_id": "deFouchier_FrontEcolEvol-2015",
+    "file_path": "input/M2iOR_files/deFouchier_FrontEcolEvol-2015.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "Le fichier Excel doit contenir au moins 2 feuilles (feuilles trouvées : ['Feuil1']) : input/M2iOR_files/deFouchier_FrontEcolEvol-2015.xlsx"
+  },
+  {
+    "study_id": "Test_Mut",
+    "file_path": "input/M2iOR_files/Test_Mut.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-05-28T18:55:55.623123",
+    "error_message": null
+  },
+  {
+    "study_id": "test_mut",
+    "file_path": "input/test_mut.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-06-02T16:50:26.630040",
+    "error_message": null
+  }
+]
