@@ -29,7 +29,10 @@ _GROUP_RENAME: dict[str, str] = {
 _COL_RENAME: dict[str, str] = {
     "UniProt ID": "ID",
     "sequence_ref": "Sequence_ref",
+    "solvent used for dilution": "Solvent used for dilution",
 }
+# Case-insensitive fallback index (lower-cased key → canonical output name).
+_COL_RENAME_CI: dict[str, str] = {k.lower(): v for k, v in _COL_RENAME.items()}
 
 
 def export_to_csv(df: pd.DataFrame, path: Path) -> None:
@@ -53,7 +56,8 @@ def export_to_csv(df: pd.DataFrame, path: Path) -> None:
         g_str = str(group)
         groups_row.append("" if g_str == "nan" else _GROUP_RENAME.get(g_str, g_str))
 
-        c_str = _COL_RENAME.get(str(col), str(col))
+        raw = str(col)
+        c_str = _COL_RENAME.get(raw) or _COL_RENAME_CI.get(raw.lower(), raw)
         if c_str in seen_cols:
             seen_cols[c_str] += 1
             col_row.append(f"{c_str}.{seen_cols[c_str]}")

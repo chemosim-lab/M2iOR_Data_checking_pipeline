@@ -142,8 +142,8 @@
   {
     "study_id": "Yan_jinphys-2015",
     "file_path": "input/M2iOR_files/Yan_jinphys-2015.xlsx",
-    "status": "FAILED",
-    "processed_at": "2026-05-27T18:37:54.644581",
+    "status": "DONE",
+    "processed_at": "2026-06-04T10:30:16.556578",
     "error_message": "too many values to unpack (expected 2, got 3)"
   },
   {
@@ -156,9 +156,9 @@
   {
     "study_id": "deFouchier_FrontEcolEvol-2015",
     "file_path": "input/M2iOR_files/deFouchier_FrontEcolEvol-2015.xlsx",
-    "status": "FAILED",
-    "processed_at": null,
-    "error_message": "Le fichier Excel doit contenir au moins 2 feuilles (feuilles trouvées : ['Feuil1']) : input/M2iOR_files/deFouchier_FrontEcolEvol-2015.xlsx"
+    "status": "DONE",
+    "processed_at": "2026-06-03T10:40:31.502362",
+    "error_message": "Aborted by user: 3 BLAST call(s) required."
   },
   {
     "study_id": "Test_Mut",
@@ -173,5 +173,12 @@
     "status": "DONE",
     "processed_at": "2026-06-02T16:50:26.630040",
     "error_message": null
+  },
+  {
+    "study_id": "deFouchier_NatCommun-2017",
+    "file_path": "input/clean_Seb/deFouchier_NatCommun-2017.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "Group Receptor not in the DataFrame."
   }
 ]
