@@ -1,7 +1,10 @@
 # pipeline/scripts/read_excel.py
 
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
+
+from scripts.columns import COLUMNS_BY_GROUP, GROUPS_ORDER
 
 
 def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
@@ -18,7 +21,8 @@ def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
     Returns a DataFrame with MultiIndex columns: (group, column_name).
 
     Raises:
-        ValueError: if the file does not contain a 2nd sheet.
+        ValueError: if the file does not contain a 2nd sheet, or if groups/columns
+                    do not match the expected structure.
     """
     xl = pd.ExcelFile(excel_path)
 
@@ -28,19 +32,24 @@ def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
             + f"(feuilles trouvées : {xl.sheet_names}) : {excel_path}"
         )
 
-    template_data_sheet_name, raw_data_sheet_name = xl.sheet_names
+    _, raw_data_sheet_name = xl.sheet_names
 
-    template_data_sheet_name = pd.read_excel(  # pyright: ignore[reportUnknownMemberType]
-        xl, sheet_name=template_data_sheet_name, header=None
-    )
     # Lire toutes les lignes sans inférence d'en-tête
-    raw = pd.read_excel(xl, sheet_name=raw_data_sheet_name, header=None)  # pyright: ignore[reportUnknownMemberType]
+    raw_check = pd.read_excel(  # pyright: ignore[reportUnknownMemberType]
+        xl, sheet_name=raw_data_sheet_name, header=None, nrows=2
+    )
 
-    # Ligne 0 : labels de groupe — forward-fill pour propager les noms sur les cellules fusionnées
-    groups = raw.iloc[0].ffill()
-
+    # Ligne 0 : labels de groupe — forward-fill pour les cellules fusionnées
+    groups = raw_check.iloc[0].ffill()
     # Ligne 1 : noms de colonnes
-    columns = raw.iloc[1]
+    columns = raw_check.iloc[1]
+
+    _validate_structure(groups, columns, excel_path)
+
+    # Lire toutes les lignes sans inférence d'en-tête
+    raw = pd.read_excel(  # pyright: ignore[reportUnknownMemberType]
+        xl, sheet_name=raw_data_sheet_name, header=None
+    )
 
     # Construction du MultiIndex (groupe, colonne)
     multi_columns = pd.MultiIndex.from_arrays([groups, columns])
@@ -50,3 +59,26 @@ def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
     df.columns = multi_columns
 
     return df
+
+
+def _validate_structure(
+    groups: pd.Series, columns: pd.Series, excel_path: Path
+) -> None:
+    actual_groups_order = list(dict.fromkeys(groups.dropna()))
+    if actual_groups_order != GROUPS_ORDER:
+        msg = (
+            f"{excel_path}: groupes inattendus.\n"
+            f"  attendu : {GROUPS_ORDER}\n"
+            f"  trouvé  : {actual_groups_order}"
+        )
+        raise ValueError(msg)
+
+    for group, expected_cols in COLUMNS_BY_GROUP:
+        actual_cols = list(columns[groups == group])
+        if actual_cols != expected_cols:
+            msg = (
+                f"{excel_path}: colonnes inattendues dans '{group}'.\n"
+                f"  attendu : {expected_cols}\n"
+                f"  trouvé  : {actual_cols}"
+            )
+            raise ValueError(msg)
