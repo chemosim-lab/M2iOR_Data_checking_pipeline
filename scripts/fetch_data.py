@@ -1,13 +1,13 @@
 # pipeline/scripts/fetch_uniprot.py
 
-from multiprocessing import Value
-from pandas.core.frame import DataFrame
 import time
+from multiprocessing import Value
 from pathlib import Path
 from typing import Any, cast
 
 import pandas as pd
 import requests
+from pandas.core.frame import DataFrame
 
 from scripts.cache_manager import get_missing_keys, set_cache
 
@@ -35,7 +35,9 @@ def _fetch_data(accession: str) -> Any | None:
     url = _UNIPROTKB_ENDPOINT_URL.format(accession=accession)
     try:
         response = requests.get(url, timeout=10)
-        json_data = response.json() if response and response.status_code == 200 else None
+        json_data = (
+            response.json() if response and response.status_code == 200 else None
+        )
         return json_data if json_data else None
     except requests.RequestException as e:
         print(f"  [UniProt] Failed to fetch {accession}: {e}")
@@ -43,7 +45,6 @@ def _fetch_data(accession: str) -> Any | None:
 
 
 def fetch_uniprot_data(unique_ids: list[str]) -> None:
-    
 
     to_fetch = get_missing_keys(unique_ids)
 
