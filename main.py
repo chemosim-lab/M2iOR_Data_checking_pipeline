@@ -17,7 +17,7 @@ from scripts.fetch_blast import (
     count_uncached_blast_queries,
     get_failed_blast_queries,
 )
-from scripts.fetch_data import fetch_uniprot_data
+from scripts.fetch_data import fetch_genbank_data, fetch_uniprot_data
 from scripts.process_receptors import (
     add_empty_column_after,
     collect_blast_queries,
@@ -66,35 +66,9 @@ def process_raw_excel_file(excel_path: Path) -> None:
         # For rows without a UniProt ID, fall back to BLAST against NCBI nr.
         # Deduplicate queries first — one API call per unique (sequence, species) pair.
         blast_queries = collect_blast_queries(df, protein_groups)
-        if blast_queries:
-            new_count = count_uncached_blast_queries(blast_queries)
-            failed = get_failed_blast_queries(blast_queries)
-
-            if new_count > 0 or failed:
-                print(f"\n  ! {len(blast_queries)} sequence(s) have no UniProt ID:")  # noqa: T201
-                if new_count > 0:
-                    print(f"    {new_count} new (never queried, ~1-5 min each)")  # noqa: T201
-                for _seq, sp, err in failed:
-                    print(f"    previously failed — {sp}: {err}")  # noqa: T201
-
-                total = new_count + len(failed)
-                answer = (
-                    input(f"  Run/retry {total} BLAST lookup(s)? [y/N] ")
-                    .strip()
-                    .lower()
-                )
-                if answer != "y":
-                    msg = f"Aborted by user: {total} BLAST lookup(s) required."
-                    raise ValueError(msg)  # noqa: TRY301
-
-                if failed:
-                    clear_blast_cache_entries([(s, sp) for s, sp, _ in failed])
-
-            blast_refs = resolve_missing_ids_via_blast(
-                df, protein_groups, blast_queries
-            )
-        else:
-            blast_refs = {}
+        blast_refs: dict[str, str] = fetch_genbank_data(
+            df, protein_groups, blast_queries
+        )
 
         # Add empty Sequence_ref in df for Receptor and Co-Receptor groups
         add_empty_column_after(
@@ -108,7 +82,9 @@ def process_raw_excel_file(excel_path: Path) -> None:
         )
 
         # Add Reference sequences, identity (%) and mutations vs UniProt reference
-        enrich_with_reference_and_mutations(df, protein_groups, blast_refs)
+        enrich_with_reference_and_mutations(
+            df, protein_groups, all_unique_uniprot_ids, blast_refs
+        )
 
         # 4. Export enriched dataset as CSV with two-row (group / column) header
         export_to_csv(df, output_path / f"{study_id}.csv")

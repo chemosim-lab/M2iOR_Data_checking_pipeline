@@ -4,7 +4,15 @@ from typing import cast
 import pandas as pd
 
 from scripts.cache_manager import get_cache
-from scripts.columns import DATABASE, IDENTITY, MUTATION, SEQUENCE, SEQUENCE_REF, SPECIES, UNIPROT_ID
+from scripts.columns import (
+    DATABASE,
+    IDENTITY,
+    MUTATION,
+    SEQUENCE,
+    SEQUENCE_REF,
+    SPECIES,
+    UNIPROT_ID,
+)
 from scripts.fetch_blast import fetch_blast_reference
 from scripts.find_protein_mutations import align_and_annotate
 
@@ -44,9 +52,7 @@ def add_empty_column_after(
         df.insert(loc=insert_at, column=(group, new_column), value=None)
 
 
-def collect_blast_queries(
-    df: pd.DataFrame, groups: list[str]
-) -> list[tuple[str, str]]:
+def collect_blast_queries(df: pd.DataFrame, groups: list[str]) -> list[tuple[str, str]]:
     """
     Return unique (sequence, species) pairs for rows that have no UniProt ID
     but have both a Sequence and a Species value.  Fully vectorized — no per-row
@@ -57,8 +63,8 @@ def collect_blast_queries(
         if group not in df.columns.get_level_values(0):
             continue
         sub = df[group]
-        missing = (
-            sub[UNIPROT_ID].isna() | (sub[UNIPROT_ID].astype(str).str.strip() == "")
+        missing = sub[UNIPROT_ID].isna() | (
+            sub[UNIPROT_ID].astype(str).str.strip() == ""
         )
         candidates = sub.loc[missing, [SEQUENCE, SPECIES]].dropna()
         seq = candidates[SEQUENCE].astype(str).str.strip()
@@ -97,8 +103,8 @@ def resolve_missing_ids_via_blast(
         if group not in df.columns.get_level_values(0):
             continue
         sub = df[group]
-        missing = (
-            sub[UNIPROT_ID].isna() | (sub[UNIPROT_ID].astype(str).str.strip() == "")
+        missing = sub[UNIPROT_ID].isna() | (
+            sub[UNIPROT_ID].astype(str).str.strip() == ""
         )
         seq_col = sub.loc[missing, SEQUENCE].astype(str).str.strip()
         species_col = sub.loc[missing, SPECIES].astype(str).str.strip()
@@ -118,6 +124,7 @@ def resolve_missing_ids_via_blast(
 def enrich_with_reference_and_mutations(
     df: pd.DataFrame,
     groups: list[str],
+    all_unique_uniprot_ids: list[str],
     blast_refs: dict[str, str] | None = None,
 ) -> None:
     """
@@ -132,12 +139,10 @@ def enrich_with_reference_and_mutations(
         blast_refs = {}
 
     for group in groups:
-        all_ids = get_unique_uniprot_ids(df, groups=[group], column_name=UNIPROT_ID)
-
         # One disk read per unique UniProt ID (GenBank IDs come from blast_refs).
         uniprot_cache: dict[str, str | None] = {
             uid: (data["sequence"]["value"] if (data := get_cache(uid)) else None)
-            for uid in all_ids
+            for uid in all_unique_uniprot_ids
             if uid not in blast_refs
         }
 
