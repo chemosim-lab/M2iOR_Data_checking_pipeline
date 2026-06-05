@@ -34,7 +34,7 @@ def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
 
     _, raw_data_sheet_name = xl.sheet_names
 
-    # Lire toutes les lignes sans inférence d'en-tête
+    # Lire toutes la première ligne sans inférence d'en-tête
     raw_check = pd.read_excel(  # pyright: ignore[reportUnknownMemberType]
         xl, sheet_name=raw_data_sheet_name, header=None, nrows=2
     )
