@@ -1,184 +1,37 @@
 [
   {
-    "study_id": "00_rawdata_ext_04_nA_update_tem_cas_fill",
-    "file_path": "input/M2iOR_files/260419_ThanetP_data_complete/00_rawdata_extraction/00_rawdata_ext_04_nA_update_tem_cas_fill.xlsx",
-    "status": "FAILED",
-    "processed_at": null,
-    "error_message": "The Excel file must contain at least 2 sheets (sheets found: ['Sheet1']): input/M2iOR_files/260419_ThanetP_data_complete/00_rawdata_extraction/00_rawdata_ext_04_nA_update_tem_cas_fill.xlsx"
-  },
-  {
-    "study_id": "00_rawdata_ext_06a_fluores_upd_tem_cas_fill",
-    "file_path": "input/M2iOR_files/260419_ThanetP_data_complete/00_rawdata_extraction/00_rawdata_ext_06a_fluores_upd_tem_cas_fill.xlsx",
-    "status": "FAILED",
-    "processed_at": null,
-    "error_message": "The Excel file must contain at least 2 sheets (sheets found: ['Sheet1']): input/M2iOR_files/260419_ThanetP_data_complete/00_rawdata_extraction/00_rawdata_ext_06a_fluores_upd_tem_cas_fill.xlsx"
-  },
-  {
-    "study_id": "03_ThanetP_data_complete",
-    "file_path": "input/M2iOR_files/260419_ThanetP_data_complete/03_ThanetP_data_complete.xlsx",
-    "status": "FAILED",
-    "processed_at": null,
-    "error_message": "Aborted by user: 51 BLAST lookup(s) required."
-  },
-  {
-    "study_id": "Reference_list",
-    "file_path": "input/M2iOR_files/260419_ThanetP_data_complete/Reference_list.xlsx",
-    "status": "FAILED",
-    "processed_at": null,
-    "error_message": "The Excel file must contain at least 2 sheets (sheets found: ['Sheet1']): input/M2iOR_files/260419_ThanetP_data_complete/Reference_list.xlsx"
-  },
-  {
-    "study_id": "Chang_CurrBiol-2023",
-    "file_path": "input/M2iOR_files/Chang_CurrBiol-2023.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-05-28T18:27:32.831752",
-    "error_message": null
-  },
-  {
-    "study_id": "Guo_MBE-2021",
-    "file_path": "input/M2iOR_files/Guo_MBE-2021.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-05-28T09:51:57.071976",
-    "error_message": null
-  },
-  {
-    "study_id": "Kreher_Neuron-2005",
-    "file_path": "input/M2iOR_files/Kreher_Neuron-2005.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-06-04T16:52:27.352762",
-    "error_message": "input/clean_Seb/Kreher_Neuron-2005.xlsx: colonnes inattendues dans 'Response'.\n  attendu : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value Nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']\n  trouvé  : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']"
-  },
-  {
-    "study_id": "Kreher_Neuron-2008",
-    "file_path": "input/M2iOR_files/Kreher_Neuron-2008.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-06-04T16:52:59.401736",
-    "error_message": "input/clean_Seb/Kreher_Neuron-2008.xlsx: colonnes inattendues dans 'Response'.\n  attendu : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value Nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']\n  trouvé  : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']"
-  },
-  {
-    "study_id": "Liu_fphys-2020",
-    "file_path": "input/M2iOR_files/Liu_fphys-2020.xlsx",
-    "status": "FAILED",
-    "processed_at": "2026-05-27T18:37:52.954558",
-    "error_message": "1 receptor row(s) are missing a UniProt ID (data row index: [132])"
-  },
-  {
-    "study_id": "Liu_fphys-2022",
-    "file_path": "input/M2iOR_files/Liu_fphys-2022.xlsx",
-    "status": "FAILED",
-    "processed_at": "2026-05-27T18:37:52.980995",
-    "error_message": "54 receptor row(s) are missing a UniProt ID (data row index: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53])"
-  },
-  {
-    "study_id": "Mathew_PNAS-2013",
-    "file_path": "input/M2iOR_files/Mathew_PNAS-2013.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-06-04T16:53:56.770997",
-    "error_message": "input/clean_Seb/Mathew_PNAS-2013.xlsx: colonnes inattendues dans 'Response'.\n  attendu : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value Nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']\n  trouvé  : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']"
-  },
-  {
-    "study_id": "Mo_JAFC-2023",
-    "file_path": "input/M2iOR_files/Mo_JAFC-2023.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-06-04T16:45:05.950288",
-    "error_message": "input/clean_Seb/Mo_JAFC-2023.xlsx: colonnes inattendues dans 'Response'.\n  attendu : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value Nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']\n  trouvé  : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']"
-  },
-  {
-    "study_id": "Munch2016",
-    "file_path": "input/M2iOR_files/Munch2016.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-05-28T18:57:42.028202",
-    "error_message": null
-  },
-  {
-    "study_id": "Pask_NatCommun-2017",
-    "file_path": "input/M2iOR_files/Pask_NatCommun-2017.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-05-28T18:57:42.247812",
-    "error_message": null
-  },
-  {
-    "study_id": "Roberts_MEC-2022",
-    "file_path": "input/M2iOR_files/Roberts_MEC-2022.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-05-28T18:57:42.371961",
-    "error_message": null
-  },
-  {
-    "study_id": "Roberts_fcellneuro-2021",
-    "file_path": "input/M2iOR_files/Roberts_fcellneuro-2021.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-05-28T18:57:44.040015",
-    "error_message": null
-  },
-  {
-    "study_id": "Slone_PNAS-2017",
-    "file_path": "input/M2iOR_files/Slone_PNAS-2017.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-05-28T18:57:44.333985",
-    "error_message": null
-  },
-  {
-    "study_id": "Tanaka_CurrBiol-2009",
-    "file_path": "input/M2iOR_files/Tanaka_CurrBiol-2009.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-06-04T16:54:32.468429",
-    "error_message": "input/clean_Seb/Tanaka_CurrBiol-2009.xlsx: colonnes inattendues dans 'Response'.\n  attendu : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value Nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']\n  trouvé  : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']"
-  },
-  {
-    "study_id": "Wang_PNAS-2010",
-    "file_path": "input/M2iOR_files/Wang_PNAS-2010.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-06-04T14:50:25.780277",
-    "error_message": "input/clean_Seb/Wang_PNAS-2010.xlsx: colonnes inattendues dans 'Response'.\n  attendu : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value Nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']\n  trouvé  : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']"
-  },
-  {
-    "study_id": "Wang_insects-2024",
-    "file_path": "input/M2iOR_files/Wang_insects-2024.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-05-28T18:57:47.823451",
-    "error_message": null
-  },
-  {
-    "study_id": "Yan_jinphys-2015",
-    "file_path": "input/M2iOR_files/Yan_jinphys-2015.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-06-04T16:58:04.425703",
-    "error_message": "input/clean_Seb/Yan_jinphys-2015.xlsx: colonnes inattendues dans 'Source'.\n  attendu : ['Reference', 'DOI', 'Reference Position']\n  trouvé  : ['Reference', 'DOI', 'Reference Position', nan, np.float64(nan), np.float64(nan)]"
-  },
-  {
-    "study_id": "Yuvaraj_IBMB-2018",
-    "file_path": "input/M2iOR_files/Yuvaraj_IBMB-2018.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-05-28T18:57:51.182362",
-    "error_message": null
-  },
-  {
-    "study_id": "deFouchier_FrontEcolEvol-2015",
-    "file_path": "input/M2iOR_files/deFouchier_FrontEcolEvol-2015.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-06-04T16:50:32.507805",
-    "error_message": "input/clean_Seb/deFouchier_FrontEcolEvol-2015.xlsx: colonnes inattendues dans 'Assay'.\n  attendu : ['Experimental technique', 'Recording System', 'Type', 'Expression system', 'Expression cell type / line', 'Expression driver', 'Co-transfection', 'Odor delivery system', 'Stimulation Flux', 'Stimulation Flux Unit', 'Main Flux', 'Main Flux Unit', 'Stimulation duration', 'Stimulation duration unit', 'Larva or adult']\n  trouvé  : ['Experimental technique', 'Recording System', 'Type', 'Expression system', 'Expression cell type / line', 'Expression driver', 'Co-transfection', 'Odor delivery system', 'Stimulation Flux', 'Stimulation Flux Unit', 'Main Flux', 'Main Flux Unit', 'stimulation duration', 'stimulation duration unit', 'Larva or adult']"
-  },
-  {
-    "study_id": "Test_Mut",
-    "file_path": "input/M2iOR_files/Test_Mut.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-05-28T18:55:55.623123",
-    "error_message": null
-  },
-  {
     "study_id": "test_mut",
     "file_path": "input/test_mut.xlsx",
-    "status": "DONE",
+    "status": "FAILED",
     "processed_at": "2026-06-02T16:50:26.630040",
-    "error_message": null
+    "error_message": "input/test_mut.xlsx: colonnes inattendues dans 'Response'.\n  attendu : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value Nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']\n  trouvé  : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']"
   },
   {
     "study_id": "deFouchier_NatCommun-2017",
     "file_path": "input/clean_Seb/deFouchier_NatCommun-2017.xlsx",
     "status": "FAILED",
+    "processed_at": "2026-06-05T19:15:15.171113",
+    "error_message": "Aborted by user: 12 BLAST lookup(s) required."
+  },
+  {
+    "study_id": "03_ThanetP_data_complete",
+    "file_path": "input/clean_Seb/03_ThanetP_data_complete.xlsx",
+    "status": "FAILED",
     "processed_at": null,
-    "error_message": "Aborted by user: 22 BLAST lookup(s) required."
+    "error_message": "Aborted by user: 51 BLAST lookup(s) required."
+  },
+  {
+    "study_id": "Yan_jinphys-2015",
+    "file_path": "input/clean_Seb/Yan_jinphys-2015.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "UID: in _get_receptor_name [KC881255] Cache not found for this UID."
+  },
+  {
+    "study_id": "Yan_test",
+    "file_path": "input/clean_Seb/Yan_test.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-06-08T16:50:27.160875",
+    "error_message": "UID:[KC881255] No Or<N>[a-z] receptor name found - geneName='KC881255', synonyms=None"
   }
 ]

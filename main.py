@@ -6,24 +6,23 @@ from typing import TYPE_CHECKING, cast
 
 from scripts.columns import (
     DATABASE,
+    GENE_NAME,
     IDENTITY,
+    RECEPTOR_NAME,
     SEQUENCE,
     SEQUENCE_REF,
     UNIPROT_ID,
 )
 from scripts.export_csv import export_to_csv
-from scripts.fetch_blast import (
-    clear_blast_cache_entries,
-    count_uncached_blast_queries,
-    get_failed_blast_queries,
-)
-from scripts.fetch_data import fetch_genbank_data, fetch_uniprot_data
+from scripts.fetch_data import fetch_genbank_data, fetch_ncbi_data, fetch_uniprot_data
 from scripts.process_receptors import (
     add_empty_column_after,
     collect_blast_queries,
     enrich_with_reference_and_mutations,
     get_unique_uniprot_ids,
-    resolve_missing_ids_via_blast,
+    process_receptors_name_columns,
+    rename_column,
+    strip_column,
 )
 from scripts.read_excel import get_raw_data_from_excel_file
 from scripts.registry import ProcessingStatus, StudyFileTracker, StudyProcessingRegistry
@@ -61,14 +60,28 @@ def process_raw_excel_file(excel_path: Path) -> None:
 
         # Fetch Uniprot data from accession number (UniprotID) and store them
         # in the cache
-        fetch_uniprot_data(all_unique_uniprot_ids)
+        failed_uids = fetch_uniprot_data(all_unique_uniprot_ids)
+        failed_uids, ncbi_refs = fetch_ncbi_data(all_unique_uniprot_ids, failed_uids)
+
+        # Rename "Gene Name" columns to "Receptor Name"
+        rename_column(
+            df,
+            protein_groups,
+            old_column_name=GENE_NAME,
+            new_column_name=RECEPTOR_NAME,
+        )
+
+        strip_column(df, protein_groups, UNIPROT_ID)
 
         # For rows without a UniProt ID, fall back to BLAST against NCBI nr.
         # Deduplicate queries first — one API call per unique (sequence, species) pair.
-        blast_queries = collect_blast_queries(df, protein_groups)
+        blast_queries = collect_blast_queries(
+            df, protein_groups, fallback_uids=failed_uids
+        )
         blast_refs: dict[str, str] = fetch_genbank_data(
             df, protein_groups, blast_queries
         )
+        blast_refs.update(ncbi_refs)
 
         # Add empty Sequence_ref in df for Receptor and Co-Receptor groups
         add_empty_column_after(
@@ -84,6 +97,11 @@ def process_raw_excel_file(excel_path: Path) -> None:
         # Add Reference sequences, identity (%) and mutations vs UniProt reference
         enrich_with_reference_and_mutations(
             df, protein_groups, all_unique_uniprot_ids, blast_refs
+        )
+
+        # Use fetched data to check "Receptor Name" columns for Receptor and Co-Receptor
+        process_receptors_name_columns(
+            df, protein_groups, all_unique_uniprot_ids, ncbi_uids=set(ncbi_refs)
         )
 
         # 4. Export enriched dataset as CSV with two-row (group / column) header

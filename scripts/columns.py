@@ -8,7 +8,8 @@ BACKOFFICE = "Backoffice"
 
 ORDER = "Order"
 SPECIES = "Species"
-GENE_NAME = "Gene Name"
+GENE_NAME = "Gene Name"  # Old column name for "Receptor Name"
+RECEPTOR_NAME = "Receptor Name"
 UNIPROT_ID = "UniProt ID"
 DATABASE = "Database"
 IDENTITY = "Identity"  # New

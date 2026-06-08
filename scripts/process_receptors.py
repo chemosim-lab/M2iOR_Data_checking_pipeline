@@ -1,13 +1,18 @@
 # pipeline/scripts/process_receptors.py
-from typing import cast
+import re
+from locale import normalize
+from re import Match
+from typing import Any, cast
 
 import pandas as pd
 
 from scripts.cache_manager import get_cache
 from scripts.columns import (
     DATABASE,
+    GENE_NAME,
     IDENTITY,
     MUTATION,
+    RECEPTOR_NAME,
     SEQUENCE,
     SEQUENCE_REF,
     SPECIES,
@@ -15,6 +20,10 @@ from scripts.columns import (
 )
 from scripts.fetch_blast import fetch_blast_reference
 from scripts.find_protein_mutations import align_and_annotate
+
+_OR_NAME_RE = re.compile(r"^Or\d+[a-z]?$")
+_OR_NAME_RE_LOOSE = re.compile(r"^Or(\d+)([a-zA-Z]?)$", re.IGNORECASE)
+_ORCO_RE_LOOSE = re.compile(r"^Orco$", re.IGNORECASE)
 
 
 def get_unique_uniprot_ids(
@@ -29,6 +38,115 @@ def get_unique_uniprot_ids(
         ids.update(col.dropna().astype(str).str.strip().unique())
     ids.discard("")
     return sorted(ids)
+
+
+def strip_column(df: pd.DataFrame, groups: list[str], column_name: str) -> None:
+    for group in groups:
+        df.loc[:, (group, column_name)] = df[group][column_name].astype(str).str.strip()
+
+
+def _get_normalized_receptor_name(names: list[str]) -> str | None:
+    m: Match[str] | None = next(
+        (m for name in names if (m := _OR_NAME_RE_LOOSE.match(name))),
+        None,
+    )
+    if m:
+        return "Or" + m.group(1) + m.group(2).lower()
+    if any(_ORCO_RE_LOOSE.match(name) for name in names):
+        return "Orco"
+    return None
+
+
+def _extract_receptor_name_data(uid: str, data: dict[str, Any]) -> dict[str, Any]:
+    output_data = dict[str, Any]()
+    try:
+        output_data["geneName"] = data["genes"][0]["geneName"]["value"]
+    except KeyError as e:
+        msg = f"UID:[{uid}] Unexpected UniProt cache structure: missing key {e}"
+        raise ValueError(msg) from e
+
+    try:
+        synonyms_data: list[dict[str, str]] = data["synonyms"]
+        output_data["synonyms"] = [syn["value"] for syn in synonyms_data]
+    except KeyError:
+        output_data["synonyms"] = None
+
+    return output_data
+
+
+def _get_receptor_name(uid: str) -> str | None:
+
+    data: dict[str, Any] | None = get_cache(uid)
+    if not data:
+        msg = f"UID: in _get_receptor_name [{uid}] Cache not found for this UID."
+        raise ValueError(msg)
+    receptor_name_data: dict[str, Any] = _extract_receptor_name_data(uid, data)
+
+    receptor_name = receptor_name_data.get("geneName", "")
+    synonyms: list[str] = receptor_name_data.get("synonyms") or []
+
+    normalized_receptor_name: str | None = _get_normalized_receptor_name(
+        [receptor_name, *synonyms]
+    )
+    if normalized_receptor_name:
+        return normalized_receptor_name
+
+    msg = (
+        f"UID:[{uid}] No Or<N>[a-z] receptor name found - "
+        f"geneName={receptor_name!r}, synonyms={receptor_name_data.get('synonyms')}"
+    )
+    raise ValueError(msg)
+
+
+def process_receptors_name_columns(
+    df: pd.DataFrame,
+    groups: list[str],
+    all_unique_uniprot_ids: list[str],
+    ncbi_uids: set[str] | None = None,
+) -> None:
+
+    ncbi_uid_set = ncbi_uids or set()
+
+    uid_to_found_receptor_names: dict[str, list[str]] = {}
+    for group in groups:
+        # Checking groups
+        if group not in df.columns.get_level_values(0):
+            msg = f"{group} missing in df"
+            raise ValueError(msg)
+
+        # Extract Uniprot ID and Receptor Name columns
+        uid_recname_columns = df[group][[UNIPROT_ID, RECEPTOR_NAME]]
+        uid_recname_columns[UNIPROT_ID] = (
+            uid_recname_columns[UNIPROT_ID].astype(str).str.strip()
+        )
+
+        # Store
+        for uid, group_df in uid_recname_columns.groupby(UNIPROT_ID):
+            names: list[str] = group_df[RECEPTOR_NAME].unique()
+            uid_to_found_receptor_names[str(uid)] = [
+                str(name).strip() for name in names
+            ]
+
+    receptor_name_by_uid: dict[str, str | None] = {}
+    for uid in all_unique_uniprot_ids:
+        existing_names_in_uid: list[str] = uid_to_found_receptor_names.get(uid, [""])
+        normalized = _get_normalized_receptor_name(existing_names_in_uid)
+        if normalized:
+            receptor_name_by_uid[uid] = normalized
+        elif uid in ncbi_uid_set:
+            receptor_name_by_uid[uid] = existing_names_in_uid[0] or None
+        else:
+            receptor_name_by_uid[uid] = _get_receptor_name(uid)
+
+    for group in groups:
+        receptors_names = df[group][UNIPROT_ID].map(receptor_name_by_uid)
+        df.loc[:, (group, RECEPTOR_NAME)] = receptors_names
+
+
+def rename_column(
+    df: pd.DataFrame, groups: list[str], old_column_name: str, new_column_name: str
+) -> None:
+    df.columns = df.rename(columns={old_column_name: new_column_name}, level=1).columns
 
 
 def add_empty_column_after(
@@ -52,20 +170,27 @@ def add_empty_column_after(
         df.insert(loc=insert_at, column=(group, new_column), value=None)
 
 
-def collect_blast_queries(df: pd.DataFrame, groups: list[str]) -> list[tuple[str, str]]:
+def collect_blast_queries(
+    df: pd.DataFrame,
+    groups: list[str],
+    fallback_uids: list[str] | None = None,
+) -> list[tuple[str, str]]:
     """
     Return unique (sequence, species) pairs for rows that have no UniProt ID
     but have both a Sequence and a Species value.  Fully vectorized — no per-row
     iteration.
+
+    fallback_uids: UIDs for which UniProt returned no data — rows with these IDs
+    are also included as BLAST candidates.
     """
+    fallback_set: set[str] = set(fallback_uids) if fallback_uids else set()
     queries: set[tuple[str, str]] = set()
     for group in groups:
         if group not in df.columns.get_level_values(0):
             continue
         sub = df[group]
-        missing = sub[UNIPROT_ID].isna() | (
-            sub[UNIPROT_ID].astype(str).str.strip() == ""
-        )
+        uid_col = sub[UNIPROT_ID].astype(str).str.strip()
+        missing = sub[UNIPROT_ID].isna() | (uid_col == "") | uid_col.isin(fallback_set)
         candidates = sub.loc[missing, [SEQUENCE, SPECIES]].dropna()
         seq = candidates[SEQUENCE].astype(str).str.strip()
         species = candidates[SPECIES].astype(str).str.strip()
