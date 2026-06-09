@@ -76,7 +76,7 @@ def _extract_receptor_name_data(uid: str, data: dict[str, Any]) -> dict[str, Any
 
 def _get_receptor_name(uid: str) -> str | None:
 
-    data: dict[str, Any] | None = get_cache(uid)
+    data: dict[str, Any] | None = get_cache(uid, subdir="receptors")
     if not data:
         msg = f"UID: in _get_receptor_name [{uid}] Cache not found for this UID."
         raise ValueError(msg)
@@ -262,13 +262,17 @@ def enrich_with_reference_and_mutations(
     ncbi_uid_set: set[str] = {
         uid
         for uid in all_unique_uniprot_ids
-        if (data := get_cache(uid)) and data.get("source") == "ncbi"
+        if (data := get_cache(uid, subdir="receptors")) and data.get("source") == "ncbi"
     }
 
     for group in groups:
         # One disk read per unique UniProt ID (GenBank IDs come from blast_refs).
         uniprot_cache: dict[str, str | None] = {
-            uid: (data["sequence"]["value"] if (data := get_cache(uid)) else None)
+            uid: (
+                data["sequence"]["value"]
+                if (data := get_cache(uid, subdir="receptors"))
+                else None
+            )
             for uid in all_unique_uniprot_ids
             if uid not in blast_refs
         }

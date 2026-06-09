@@ -63,7 +63,7 @@ def _fetch_data(accession: str) -> Any | None:
 def fetch_uniprot_data(unique_ids: list[str]) -> list[str]:
     """Fetch UniProt data for each ID and cache it.
     Returns UIDs for which no data was found."""
-    to_fetch = get_missing_keys(unique_ids)
+    to_fetch = get_missing_keys(unique_ids, subdir="receptors")
     failed: list[str] = []
 
     if to_fetch:
@@ -81,7 +81,7 @@ def fetch_uniprot_data(unique_ids: list[str]) -> list[str]:
                 continue
 
             print("ok")
-            set_cache(accession, accession_data)
+            set_cache(accession, accession_data, subdir="receptors")
 
             if i < len(to_fetch):
                 time.sleep(_REQUEST_DELAY)
@@ -147,7 +147,7 @@ def fetch_ncbi_data(all_uids: list[str], failed_uids: list[str]) -> list[str]:
     ncbi_refs: dict[str, str] = {
         uid: data["sequence"]["value"]
         for uid in all_uids
-        if (data := get_cache(uid)) and data.get("source") == "ncbi"
+        if (data := get_cache(uid, subdir="receptors")) and data.get("source") == "ncbi"
     }
 
     still_missing: list[str] = []
@@ -158,7 +158,7 @@ def fetch_ncbi_data(all_uids: list[str], failed_uids: list[str]) -> list[str]:
         data = _fetch_ncbi_protein(accession)
         if data:
             print("ok")  # noqa: T201
-            set_cache(accession, data)
+            set_cache(accession, data, subdir="receptors")
         else:
             print("not found")  # noqa: T201
             still_missing.append(accession)

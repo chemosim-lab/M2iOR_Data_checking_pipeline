@@ -14,7 +14,7 @@ from Bio.Blast import NCBIXML
 _ENTREZ_EMAIL = "andre.lanrezac@univ-cotedazur.fr"
 
 _BLAST_URL = "https://blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
-_BLAST_CACHE_FILE = Path("cache/blast_cache.json")
+_BLAST_CACHE_FILE = Path("cache/receptors/blast_cache.json")
 _POLL_INTERVAL = 10   # seconds between status polls
 _BLAST_TIMEOUT = 300  # give up after 5 minutes
 _ENTREZ_DELAY = 0.4   # NCBI policy: max 3 req/s without API key
