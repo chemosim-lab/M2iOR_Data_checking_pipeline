@@ -38,7 +38,7 @@ REGISTRY_FILE = Path("./registry.json")
 
 def process_raw_excel_file(excel_path: Path) -> None:
     study_id: str = excel_path.stem  # e.g. "001_Kreher_Neuron_2005"
-    output_path = LARAVEL_DATA_PATH / study_id
+    output_path = LARAVEL_DATA_PATH
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Register if not already known; ignore the error if already registered
@@ -61,7 +61,8 @@ def process_raw_excel_file(excel_path: Path) -> None:
         # Fetch Uniprot data from accession number (UniprotID) and store them
         # in the cache
         failed_uids = fetch_uniprot_data(all_unique_uniprot_ids)
-        failed_uids, ncbi_refs = fetch_ncbi_data(all_unique_uniprot_ids, failed_uids)
+        # NCBI fakkback
+        failed_uids = fetch_ncbi_data(all_unique_uniprot_ids, failed_uids)
 
         # Rename "Gene Name" columns to "Receptor Name"
         rename_column(
@@ -81,7 +82,6 @@ def process_raw_excel_file(excel_path: Path) -> None:
         blast_refs: dict[str, str] = fetch_genbank_data(
             df, protein_groups, blast_queries
         )
-        blast_refs.update(ncbi_refs)
 
         # Add empty Sequence_ref in df for Receptor and Co-Receptor groups
         add_empty_column_after(
@@ -100,9 +100,7 @@ def process_raw_excel_file(excel_path: Path) -> None:
         )
 
         # Use fetched data to check "Receptor Name" columns for Receptor and Co-Receptor
-        process_receptors_name_columns(
-            df, protein_groups, all_unique_uniprot_ids, ncbi_uids=set(ncbi_refs)
-        )
+        process_receptors_name_columns(df, protein_groups, all_unique_uniprot_ids)
 
         # 4. Export enriched dataset as CSV with two-row (group / column) header
         export_to_csv(df, output_path / f"{study_id}.csv")

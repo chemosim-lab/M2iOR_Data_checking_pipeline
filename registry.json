@@ -21,17 +21,17 @@
     "error_message": "Aborted by user: 51 BLAST lookup(s) required."
   },
   {
-    "study_id": "Yan_jinphys-2015",
-    "file_path": "input/clean_Seb/Yan_jinphys-2015.xlsx",
-    "status": "FAILED",
-    "processed_at": null,
-    "error_message": "UID: in _get_receptor_name [KC881255] Cache not found for this UID."
-  },
-  {
     "study_id": "Yan_test",
     "file_path": "input/clean_Seb/Yan_test.xlsx",
     "status": "DONE",
-    "processed_at": "2026-06-08T16:50:27.160875",
+    "processed_at": "2026-06-09T11:18:14.039325",
     "error_message": "UID:[KC881255] No Or<N>[a-z] receptor name found - geneName='KC881255', synonyms=None"
+  },
+  {
+    "study_id": "Yan_jinphys-2015",
+    "file_path": "input/clean_Seb/Yan_jinphys-2015.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-06-09T11:19:24.795264",
+    "error_message": null
   }
 ]

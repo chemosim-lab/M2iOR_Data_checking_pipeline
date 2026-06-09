@@ -91,6 +91,9 @@ def _get_receptor_name(uid: str) -> str | None:
     if normalized_receptor_name:
         return normalized_receptor_name
 
+    if receptor_name:
+        return receptor_name
+
     msg = (
         f"UID:[{uid}] No Or<N>[a-z] receptor name found - "
         f"geneName={receptor_name!r}, synonyms={receptor_name_data.get('synonyms')}"
@@ -99,15 +102,10 @@ def _get_receptor_name(uid: str) -> str | None:
 
 
 def process_receptors_name_columns(
-    df: pd.DataFrame,
-    groups: list[str],
-    all_unique_uniprot_ids: list[str],
-    ncbi_uids: set[str] | None = None,
+    df: pd.DataFrame, groups: list[str], all_unique_uniprot_ids: list[str]
 ) -> None:
 
-    ncbi_uid_set = ncbi_uids or set()
-
-    uid_to_found_receptor_names: dict[str, list[str]] = {}
+    found_receptor_names_by_uid: dict[str, list[str]] = {}
     for group in groups:
         # Checking groups
         if group not in df.columns.get_level_values(0):
@@ -123,18 +121,16 @@ def process_receptors_name_columns(
         # Store
         for uid, group_df in uid_recname_columns.groupby(UNIPROT_ID):
             names: list[str] = group_df[RECEPTOR_NAME].unique()
-            uid_to_found_receptor_names[str(uid)] = [
-                str(name).strip() for name in names
+            found_receptor_names_by_uid[str(uid)] = [
+                str(name).strip() for name in names if pd.notna(name)
             ]
 
     receptor_name_by_uid: dict[str, str | None] = {}
     for uid in all_unique_uniprot_ids:
-        existing_names_in_uid: list[str] = uid_to_found_receptor_names.get(uid, [""])
-        normalized = _get_normalized_receptor_name(existing_names_in_uid)
+        found_receptor_names: list[str] = found_receptor_names_by_uid.get(uid, [""])
+        normalized = _get_normalized_receptor_name(found_receptor_names)
         if normalized:
             receptor_name_by_uid[uid] = normalized
-        elif uid in ncbi_uid_set:
-            receptor_name_by_uid[uid] = existing_names_in_uid[0] or None
         else:
             receptor_name_by_uid[uid] = _get_receptor_name(uid)
 
@@ -263,6 +259,12 @@ def enrich_with_reference_and_mutations(
     if blast_refs is None:
         blast_refs = {}
 
+    ncbi_uid_set: set[str] = {
+        uid
+        for uid in all_unique_uniprot_ids
+        if (data := get_cache(uid)) and data.get("source") == "ncbi"
+    }
+
     for group in groups:
         # One disk read per unique UniProt ID (GenBank IDs come from blast_refs).
         uniprot_cache: dict[str, str | None] = {
@@ -282,6 +284,8 @@ def enrich_with_reference_and_mutations(
 
             if uid_str and uid_str in blast_refs:
                 seq_ref, database = blast_refs[uid_str], "genbank"
+            elif uid_str and uid_str in ncbi_uid_set:
+                seq_ref, database = uniprot_cache.get(uid_str), "genbank"
             elif uid_str:
                 seq_ref, database = uniprot_cache.get(uid_str), "uniprot"
             else:

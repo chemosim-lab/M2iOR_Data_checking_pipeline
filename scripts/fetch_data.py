@@ -107,8 +107,10 @@ def _fetch_ncbi_protein(accession: str) -> dict[str, Any] | None:
         response = requests.get(
             _NCBI_EFETCH_URL,
             params={
-                "db": "nuccore", "id": accession,
-                "rettype": "fasta_cds_aa", "retmode": "text",
+                "db": "nuccore",
+                "id": accession,
+                "rettype": "fasta_cds_aa",
+                "retmode": "text",
             },
             timeout=15,
         )
@@ -136,11 +138,9 @@ def _fetch_ncbi_protein(accession: str) -> dict[str, Any] | None:
         }
 
 
-def fetch_ncbi_data(
-    all_uids: list[str], failed_uids: list[str]
-) -> tuple[list[str], dict[str, str]]:
+def fetch_ncbi_data(all_uids: list[str], failed_uids: list[str]) -> list[str]:
     """Try to fetch protein data from NCBI for UIDs that failed UniProt lookup.
-    Returns (still_missing_uids, ncbi_refs) where ncbi_refs maps accession → sequence.
+    Returns (still_missing_uids)
     ncbi_refs is rebuilt from cache on every run for UIDs previously tagged as NCBI.
     """
     # Rebuild from cache first (covers UIDs already fetched in a previous run)
@@ -159,11 +159,10 @@ def fetch_ncbi_data(
         if data:
             print("ok")  # noqa: T201
             set_cache(accession, data)
-            ncbi_refs[accession] = data["sequence"]["value"]
         else:
             print("not found")  # noqa: T201
             still_missing.append(accession)
-    return still_missing, ncbi_refs
+    return still_missing
 
 
 def fetch_genbank_data(
