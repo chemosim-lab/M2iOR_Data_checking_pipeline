@@ -23,7 +23,9 @@ from scripts.process_receptors import resolve_missing_ids_via_blast
 _UNIPROT_FASTA_URL = "https://rest.uniprot.org/uniprotkb/{accession}.fasta"
 _UNIPROTKB_ENDPOINT_URL = "https://rest.uniprot.org/uniprotkb/{accession}"
 _NCBI_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
-_REQUEST_DELAY = 0.2  # seconds between requests to respect UniProt rate limits
+_PUBCHEM_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/JSON"
+_PUBCHEM_SYNONYMS_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/synonyms/JSON"
+_REQUEST_DELAY = 0.2  # seconds between requests
 
 _CACHE_FILE = Path(__file__).parent.parent / "cache" / "uniprot_sequences.json"
 
@@ -193,3 +195,55 @@ def fetch_genbank_data(
             clear_blast_cache_entries([(s, sp) for s, sp, _ in failed])
 
     return resolve_missing_ids_via_blast(df, protein_groups, blast_queries)
+
+
+def fetch_pubchem_data(unique_cids: list[int]) -> list[int]:
+    """Fetch PubChem compound data for each CID and cache it.
+    Returns CIDs for which no data was found."""
+    missing = set(get_missing_keys([str(cid) for cid in unique_cids], subdir="molecules"))
+    to_fetch = [cid for cid in unique_cids if str(cid) in missing]
+    failed: list[int] = []
+
+    if to_fetch:
+        print(
+            f"Fetching {len(to_fetch)} new CID(s) from PubChem "
+            f"({len(unique_cids) - len(to_fetch)} already cached)..."
+        )
+        for i, cid in enumerate(to_fetch, start=1):
+            print(f"  [{i}/{len(to_fetch)}] CID:{cid}", end=" ... ", flush=True)
+            try:
+                response = requests.get(_PUBCHEM_URL.format(cid=cid), timeout=10)
+                if response.status_code != _HTTP_OK:
+                    print(f"not found (HTTP {response.status_code})")
+                    failed.append(cid)
+                    continue
+
+                data = response.json()
+
+                time.sleep(_REQUEST_DELAY)
+
+                syn_response = requests.get(
+                    _PUBCHEM_SYNONYMS_URL.format(cid=cid), timeout=10
+                )
+                if syn_response.status_code == _HTTP_OK:
+                    synonyms = (
+                        syn_response.json()
+                        .get("InformationList", {})
+                        .get("Information", [{}])[0]
+                        .get("Synonym", [])
+                    )
+                    data["synonyms"] = synonyms
+
+                set_cache(str(cid), data, subdir="molecules")
+                print("ok")
+
+            except requests.RequestException as e:
+                print(f"error: {e}")
+                failed.append(cid)
+
+            if i < len(to_fetch):
+                time.sleep(_REQUEST_DELAY)
+    else:
+        print(f"All {len(unique_cids)} CID(s) found in cache, skipping API calls.")
+
+    return failed
