@@ -24,14 +24,14 @@
     "study_id": "Yan_test",
     "file_path": "input/clean_Seb/Yan_test.xlsx",
     "status": "DONE",
-    "processed_at": "2026-06-09T11:18:14.039325",
+    "processed_at": "2026-06-09T17:21:47.566108",
     "error_message": "UID:[KC881255] No Or<N>[a-z] receptor name found - geneName='KC881255', synonyms=None"
   },
   {
     "study_id": "Yan_jinphys-2015",
     "file_path": "input/clean_Seb/Yan_jinphys-2015.xlsx",
     "status": "DONE",
-    "processed_at": "2026-06-09T11:19:24.795264",
+    "processed_at": "2026-06-09T17:16:27.720853",
     "error_message": null
   }
 ]

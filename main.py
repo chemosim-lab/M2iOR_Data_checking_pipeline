@@ -15,12 +15,13 @@ from scripts.columns import (
 )
 from scripts.export_csv import export_to_csv
 from scripts.fetch_data import (
+    fetch_cids_from_cas,
     fetch_genbank_data,
     fetch_ncbi_data,
     fetch_pubchem_data,
     fetch_uniprot_data,
 )
-from scripts.process_molecules import get_unique_cids
+from scripts.process_molecules import enrich_molecule_columns, get_unique_cids
 from scripts.process_receptors import (
     add_empty_column_after,
     collect_blast_queries,
@@ -112,9 +113,15 @@ def process_raw_excel_file(excel_path: Path) -> None:
 
         # ----------------------------------------------------------------------
         # MOLECULES ------------------------------------------------------------
-        molecule_groups = ["Molecule"]
         all_unique_cids = get_unique_cids(df)
         failed_cids = fetch_pubchem_data(all_unique_cids)
+
+        # Fallback: rows with empty CID but a CAS → find the CID via PubChem
+        new_cids = fetch_cids_from_cas(df)
+        if new_cids:
+            fetch_pubchem_data(new_cids)
+
+        enrich_molecule_columns(df)
 
         # 4. Export enriched dataset as CSV with two-row (group / column) header
         export_to_csv(df, output_path / f"{study_id}.csv")

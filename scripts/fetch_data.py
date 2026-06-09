@@ -13,6 +13,9 @@ if TYPE_CHECKING:
     import pandas as pd
 
 from scripts.cache_manager import get_cache, get_missing_keys, set_cache
+from scripts.columns import CAS as CAS_COL
+from scripts.columns import CID as CID_COL
+from scripts.columns import MOLECULE
 from scripts.fetch_blast import (
     clear_blast_cache_entries,
     count_uncached_blast_queries,
@@ -25,6 +28,8 @@ _UNIPROTKB_ENDPOINT_URL = "https://rest.uniprot.org/uniprotkb/{accession}"
 _NCBI_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 _PUBCHEM_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/JSON"
 _PUBCHEM_SYNONYMS_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/synonyms/JSON"
+_PUBCHEM_VIEW_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{cid}/JSON/?response_type=display"
+_PUBCHEM_CAS_CID_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{cas}/cids/JSON"
 _REQUEST_DELAY = 0.2  # seconds between requests
 
 _CACHE_FILE = Path(__file__).parent.parent / "cache" / "uniprot_sequences.json"
@@ -234,6 +239,16 @@ def fetch_pubchem_data(unique_cids: list[int]) -> list[int]:
                     )
                     data["synonyms"] = synonyms
 
+                time.sleep(_REQUEST_DELAY)
+
+                view_response = requests.get(
+                    _PUBCHEM_VIEW_URL.format(cid=cid), timeout=10
+                )
+                if view_response.status_code == _HTTP_OK:
+                    data["record_title"] = (
+                        view_response.json().get("Record", {}).get("RecordTitle")
+                    )
+
                 set_cache(str(cid), data, subdir="molecules")
                 print("ok")
 
@@ -247,3 +262,49 @@ def fetch_pubchem_data(unique_cids: list[int]) -> list[int]:
         print(f"All {len(unique_cids)} CID(s) found in cache, skipping API calls.")
 
     return failed
+
+
+def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
+    """For Molecule rows with an empty CID, look up the CID via CAS on PubChem.
+    Updates the CID column in df. Returns the list of newly found CIDs."""
+    molecule_df = df[MOLECULE]
+    no_cid = molecule_df[CID_COL].isna() | (molecule_df[CID_COL] == 0)
+    missing_cid = no_cid & molecule_df[CAS_COL].notna()
+    cas_series = molecule_df.loc[missing_cid, CAS_COL]
+
+    if cas_series.empty:
+        return []
+
+    unique_cas = cas_series.unique().tolist()
+    cas_to_cid: dict[str, int] = {}
+
+    print(f"CID fallback: querying {len(unique_cas)} CAS number(s) on PubChem...")  # noqa: T201
+    for i, cas in enumerate(unique_cas, start=1):
+        print(f"  [{i}/{len(unique_cas)}] CAS:{cas}", end=" ... ", flush=True)  # noqa: T201
+        try:
+            response = requests.get(_PUBCHEM_CAS_CID_URL.format(cas=cas), timeout=10)
+            if response.status_code == _HTTP_OK:
+                cids = response.json().get("IdentifierList", {}).get("CID", [])
+                if cids:
+                    cas_to_cid[cas] = cids[0]
+                    print(f"CID:{cids[0]}")  # noqa: T201
+                else:
+                    print("not found")  # noqa: T201
+            else:
+                print(f"not found (HTTP {response.status_code})")  # noqa: T201
+        except requests.RequestException as e:
+            print(f"error: {e}")  # noqa: T201
+
+        if i < len(unique_cas):
+            time.sleep(_REQUEST_DELAY)
+
+    if not cas_to_cid:
+        return []
+
+    updated = cas_series.map(cas_to_cid)
+    mask = updated.notna()
+    df.loc[updated.index[mask], (MOLECULE, CID_COL)] = (
+        updated[mask].astype(int).to_numpy()
+    )
+
+    return list(cas_to_cid.values())
