@@ -51,7 +51,7 @@ def validate_concentration_column(df: pd.DataFrame) -> None:
 def validate_parameter_column(df: pd.DataFrame) -> None:
     """Raise ValueError if any non-null value in Parameter is not an allowed value."""
     col = df[RESPONSE][PARAMETER].dropna().astype(str).str.strip()
-    invalid = col[~col.isin(_ALLOWED_PARAMETERS)]
+    invalid = col[~col.str.lower().isin(_ALLOWED_PARAMETERS)]
     if not invalid.empty:
         bad = invalid.unique().tolist()
         raise ValueError(
