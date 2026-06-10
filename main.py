@@ -37,6 +37,7 @@ from scripts.process_responses import (
     validate_responsive_column,
     validate_value_column,
 )
+from scripts.process_sources import normalize_doi_column, validate_doi_column
 from scripts.read_excel import get_raw_data_from_excel_file
 from scripts.registry import ProcessingStatus, StudyFileTracker, StudyProcessingRegistry
 
@@ -137,7 +138,15 @@ def process_raw_excel_file(excel_path: Path) -> None:
         validate_concentration_column(df)
         validate_value_column(df)
 
-        # 4. Export enriched dataset as CSV with two-row (group / column) header
+        # ----------------------------------------------------------------------
+        # ASSAY ----------------------------------------------------------------
+
+        # ----------------------------------------------------------------------
+        # SOURCE ---------------------------------------------------------------
+        normalize_doi_column(df)
+        validate_doi_column(df)
+
+        # Export enriched dataset as CSV with two-row (group / column) header
         export_to_csv(df, output_path / f"{study_id}.csv")
 
         study_tracker.complete()
