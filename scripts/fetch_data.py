@@ -107,12 +107,17 @@ def fetch_uniprot_data(unique_ids: list[str]) -> list[str]:
 _HTTP_OK = 200
 
 
-def _parse_gene_name_from_cds_header(header: str) -> str | None:
-    """Extract gene name from a fasta_cds_aa header, e.g. [gene=Or54]."""
+def _parse_tag_from_cds_header(header: str, tag: str) -> str | None:
+    """Extract a bracketed tag value from a fasta_cds_aa header, e.g. [gene=Or54]."""
+    prefix = f"{tag}="
     for part in header.split("["):
-        if part.startswith("gene="):
+        if part.startswith(prefix):
             return part.split("=", 1)[1].rstrip("]").strip()
-    return None  # no [gene=...] tag found
+    return None
+
+
+def _parse_gene_name_from_cds_header(header: str) -> str | None:
+    return _parse_tag_from_cds_header(header, "gene")
 
 
 def _fetch_ncbi_protein(accession: str) -> dict[str, Any] | None:
@@ -140,6 +145,7 @@ def _fetch_ncbi_protein(accession: str) -> dict[str, Any] | None:
         if not sequence:
             return None
         gene_name = _parse_gene_name_from_cds_header(header) or accession
+        protein_desc = _parse_tag_from_cds_header(header, "protein")
     except requests.RequestException as e:
         print(f"  [NCBI] Failed to fetch {accession}: {e}")  # noqa: T201
         return None
@@ -148,6 +154,7 @@ def _fetch_ncbi_protein(accession: str) -> dict[str, Any] | None:
             "source": "ncbi",
             "sequence": {"value": sequence},
             "genes": [{"geneName": {"value": gene_name}}],
+            "protein_description": protein_desc,
         }
 
 

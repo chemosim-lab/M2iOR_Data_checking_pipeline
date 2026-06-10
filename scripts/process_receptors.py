@@ -24,6 +24,9 @@ from scripts.find_protein_mutations import align_and_annotate
 _OR_NAME_RE = re.compile(r"^Or\d+[a-z]?$")
 _OR_NAME_RE_LOOSE = re.compile(r"^Or(\d+)([a-zA-Z]?)$", re.IGNORECASE)
 _ORCO_RE_LOOSE = re.compile(r"^Orco$", re.IGNORECASE)
+_OR_FROM_DESC_RE = re.compile(
+    r"olfactory\s+receptor\s+(?:Or)?(\d+)([a-zA-Z]?)", re.IGNORECASE
+)
 
 
 def get_unique_uniprot_ids(
@@ -74,6 +77,14 @@ def _extract_receptor_name_data(uid: str, data: dict[str, Any]) -> dict[str, Any
     return output_data
 
 
+def _extract_or_name_from_description(desc: str) -> str | None:
+    """Extract a normalized Or<N>[a-z] name from a protein description string."""
+    m = _OR_FROM_DESC_RE.search(desc)
+    if m:
+        return "Or" + m.group(1) + m.group(2).lower()
+    return None
+
+
 def _get_receptor_name(uid: str) -> str | None:
 
     data: dict[str, Any] | None = get_cache(uid, subdir="receptors")
@@ -90,6 +101,15 @@ def _get_receptor_name(uid: str) -> str | None:
     )
     if normalized_receptor_name:
         return normalized_receptor_name
+
+    # NCBI fallback: extract Or<N> from protein description, or use accession
+    if data.get("source") == "ncbi":
+        protein_desc: str = data.get("protein_description") or ""
+        if protein_desc:
+            from_desc = _extract_or_name_from_description(protein_desc)
+            if from_desc:
+                return from_desc
+        return uid  # last resort: raw accession number
 
     if receptor_name:
         return receptor_name

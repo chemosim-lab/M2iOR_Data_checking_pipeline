@@ -105,6 +105,19 @@ def process_raw_excel_file(excel_path: Path) -> None:
             df, protein_groups, blast_queries
         )
 
+        # BLAST may have written new GenBank accessions into the UniProt ID column.
+        # Re-collect all UIDs so that BLAST-discovered accessions are also named.
+        all_unique_ids_after_blast: list[str] = get_unique_uniprot_ids(
+            df, groups=protein_groups, column_name="UniProt ID"
+        )
+        blast_only_accessions = [
+            uid
+            for uid in all_unique_ids_after_blast
+            if uid not in set(all_unique_uniprot_ids)
+        ]
+        if blast_only_accessions:
+            fetch_ncbi_data(blast_only_accessions, blast_only_accessions)
+
         # Add empty Sequence_ref in df for Receptor and Co-Receptor groups
         add_empty_column_after(
             df, protein_groups, after_column=SEQUENCE, new_column=SEQUENCE_REF
@@ -118,11 +131,11 @@ def process_raw_excel_file(excel_path: Path) -> None:
 
         # Add Reference sequences, identity (%) and mutations vs UniProt reference
         enrich_with_reference_and_mutations(
-            df, protein_groups, all_unique_uniprot_ids, blast_refs
+            df, protein_groups, all_unique_ids_after_blast, blast_refs
         )
 
         # Use fetched data to check "Receptor Name" columns for Receptor and Co-Receptor
-        process_receptors_name_columns(df, protein_groups, all_unique_uniprot_ids)
+        process_receptors_name_columns(df, protein_groups, all_unique_ids_after_blast)
 
         # ----------------------------------------------------------------------
         # MOLECULES ------------------------------------------------------------
