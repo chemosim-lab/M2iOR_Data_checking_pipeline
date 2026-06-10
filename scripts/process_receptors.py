@@ -282,7 +282,7 @@ def enrich_with_reference_and_mutations(
         mutations_list: list[str | None] = []
         database_list: list[str | None] = []
 
-        for _, row in df[group].iterrows():
+        for idx, row in df[group].iterrows():
             uid = row[UNIPROT_ID]
             uid_str = str(uid).strip() if pd.notna(uid) else None
 
@@ -299,6 +299,12 @@ def enrich_with_reference_and_mutations(
             database_list.append(database)
 
             seq = row[SEQUENCE]
+            # For NCBI fallback entries, fill empty Sequence with the fetched sequence
+            seq_empty = pd.isna(seq) or not str(seq).strip()
+            if uid_str in ncbi_uid_set and seq_ref and seq_empty:
+                df.loc[idx, (group, SEQUENCE)] = seq_ref
+                seq = seq_ref
+
             if seq_ref is None or pd.isna(seq) or not str(seq).strip():
                 identities.append(None)
                 mutations_list.append(None)

@@ -83,7 +83,7 @@ def process_raw_excel_file(excel_path: Path) -> None:
         # Fetch Uniprot data from accession number (UniprotID) and store them
         # in the cache
         failed_uids = fetch_uniprot_data(all_unique_uniprot_ids)
-        # NCBI fakkback
+        # NCBI fallback
         failed_uids = fetch_ncbi_data(all_unique_uniprot_ids, failed_uids)
 
         # Rename "Gene Name" columns to "Receptor Name"
