@@ -25,6 +25,7 @@ class StudyFileTracker:
     def complete(self):
         self.status = ProcessingStatus.DONE
         self.processed_at = datetime.now()
+        self.error_message = None
 
     def fail(self, error_message: str):
         self.status = ProcessingStatus.FAILED
@@ -82,9 +83,7 @@ class StudyProcessingRegistry:
         ]
 
     def all_done(self) -> list[StudyFileTracker]:
-        return [
-            s for s in self._studies.values() if s.status == ProcessingStatus.DONE
-        ]
+        return [s for s in self._studies.values() if s.status == ProcessingStatus.DONE]
 
     @property
     def summary(self) -> dict[str, int]:
