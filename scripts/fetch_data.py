@@ -27,9 +27,13 @@ _UNIPROT_FASTA_URL = "https://rest.uniprot.org/uniprotkb/{accession}.fasta"
 _UNIPROTKB_ENDPOINT_URL = "https://rest.uniprot.org/uniprotkb/{accession}"
 _NCBI_EFETCH_URL = "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi"
 _PUBCHEM_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/JSON"
-_PUBCHEM_SYNONYMS_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/synonyms/JSON"
+_PUBCHEM_SYNONYMS_URL = (
+    "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/cid/{cid}/synonyms/JSON"
+)
 _PUBCHEM_VIEW_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compound/{cid}/JSON/?response_type=display"
-_PUBCHEM_CAS_CID_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{cas}/cids/JSON"
+_PUBCHEM_CAS_CID_URL = (
+    "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{cas}/cids/JSON"
+)
 _REQUEST_DELAY = 0.2  # seconds between requests
 
 _CACHE_FILE = Path(__file__).parent.parent / "cache" / "uniprot_sequences.json"
@@ -205,7 +209,9 @@ def fetch_genbank_data(
 def fetch_pubchem_data(unique_cids: list[int]) -> list[int]:
     """Fetch PubChem compound data for each CID and cache it.
     Returns CIDs for which no data was found."""
-    missing = set(get_missing_keys([str(cid) for cid in unique_cids], subdir="molecules"))
+    missing = set(
+        get_missing_keys([str(cid) for cid in unique_cids], subdir="molecules")
+    )
     to_fetch = [cid for cid in unique_cids if str(cid) in missing]
     failed: list[int] = []
 

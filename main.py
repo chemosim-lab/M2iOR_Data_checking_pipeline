@@ -113,7 +113,7 @@ def process_raw_excel_file(excel_path: Path) -> None:
 
         # ----------------------------------------------------------------------
         # MOLECULES ------------------------------------------------------------
-        all_unique_cids = get_unique_cids(df)
+        all_unique_cids: list[int] = get_unique_cids(df)
         failed_cids = fetch_pubchem_data(all_unique_cids)
 
         # Fallback: rows with empty CID but a CAS → find the CID via PubChem
