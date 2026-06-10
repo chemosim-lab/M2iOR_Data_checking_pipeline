@@ -75,10 +75,11 @@ def _validate_structure(
 
     for group, expected_cols in COLUMNS_BY_GROUP:
         actual_cols = list(columns[groups == group])
-        if actual_cols != expected_cols:
+        missing = [c for c in expected_cols if c not in actual_cols]
+        if missing:
             msg = (
-                f"{excel_path}: colonnes inattendues dans '{group}'.\n"
-                f"  attendu : {expected_cols}\n"
-                f"  trouvé  : {actual_cols}"
+                f"{excel_path}: missing columns in '{group}'.\n"
+                f"  missing : {missing}\n"
+                f"  found   : {actual_cols}"
             )
             raise ValueError(msg)
