@@ -38,7 +38,7 @@ if TYPE_CHECKING:
     from pandas import DataFrame
 
 LARAVEL_DATA_PATH = Path(
-    "/home/andre/Dev/M2iOR_migration/M2iOR/M2iOR_web_public-main/input_test"
+    "/home/andre/Dev/M2iOR_migration/M2iOR/M2iOR_web_public-main/resources/data"
 )
 REGISTRY_FILE = Path("./registry.json")
 
