@@ -31,6 +31,12 @@ from scripts.process_receptors import (
     rename_column,
     strip_column,
 )
+from scripts.process_responses import (
+    validate_concentration_column,
+    validate_parameter_column,
+    validate_responsive_column,
+    validate_value_column,
+)
 from scripts.read_excel import get_raw_data_from_excel_file
 from scripts.registry import ProcessingStatus, StudyFileTracker, StudyProcessingRegistry
 
@@ -122,6 +128,14 @@ def process_raw_excel_file(excel_path: Path) -> None:
             fetch_pubchem_data(new_cids)
 
         enrich_molecule_columns(df)
+
+        # ----------------------------------------------------------------------
+        # RESPONSES ------------------------------------------------------------
+        validate_responsive_column(df)
+        validate_parameter_column(df)
+        validate_value_column(df)
+        validate_concentration_column(df)
+        validate_value_column(df)
 
         # 4. Export enriched dataset as CSV with two-row (group / column) header
         export_to_csv(df, output_path / f"{study_id}.csv")
