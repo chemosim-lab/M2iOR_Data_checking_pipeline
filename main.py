@@ -142,7 +142,6 @@ def process_raw_excel_file(excel_path: Path) -> None:
         validate_parameter_column(df)
         validate_value_column(df)
         validate_concentration_column(df)
-        validate_value_column(df)
 
         # ----------------------------------------------------------------------
         # ASSAY ----------------------------------------------------------------
