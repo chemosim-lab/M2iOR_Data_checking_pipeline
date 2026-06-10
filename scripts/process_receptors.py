@@ -319,9 +319,9 @@ def enrich_with_reference_and_mutations(
             database_list.append(database)
 
             seq = row[SEQUENCE]
-            # For NCBI fallback entries, fill empty Sequence with the fetched sequence
+            # Fill empty Sequence with the reference sequence fetched from UniProt/NCBI
             seq_empty = pd.isna(seq) or not str(seq).strip()
-            if uid_str in ncbi_uid_set and seq_ref and seq_empty:
+            if seq_ref and seq_empty:
                 df.loc[idx, (group, SEQUENCE)] = seq_ref
                 seq = seq_ref
 
