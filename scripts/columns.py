@@ -50,7 +50,6 @@ MAIN_FLUX = "Main Flux"
 MAIN_FLUX_UNIT = "Main Flux Unit"
 STIMULATION_DURATION = "Stimulation duration"
 STIMULATION_DURATION_UNIT = "Stimulation duration unit"
-LARVA_OR_ADULT = "Larva or adult"
 
 REFERENCE = "Reference"
 DOI = "DOI"
@@ -105,7 +104,6 @@ _ASSAY_COLUMNS = [
     MAIN_FLUX_UNIT,
     STIMULATION_DURATION,
     STIMULATION_DURATION_UNIT,
-    LARVA_OR_ADULT,
 ]
 
 COLUMNS_BY_GROUP: list[tuple[str, list[str]]] = [
