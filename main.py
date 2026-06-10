@@ -15,6 +15,7 @@ from scripts.columns import (
 )
 from scripts.export_csv import export_to_csv
 from scripts.fetch_data import (
+    fetch_apa_references,
     fetch_cids_from_cas,
     fetch_genbank_data,
     fetch_ncbi_data,
@@ -37,7 +38,12 @@ from scripts.process_responses import (
     validate_responsive_column,
     validate_value_column,
 )
-from scripts.process_sources import normalize_doi_column, validate_doi_column
+from scripts.process_sources import (
+    enrich_reference_column,
+    get_unique_dois,
+    normalize_doi_column,
+    validate_doi_column,
+)
 from scripts.read_excel import get_raw_data_from_excel_file
 from scripts.registry import ProcessingStatus, StudyFileTracker, StudyProcessingRegistry
 
@@ -145,6 +151,9 @@ def process_raw_excel_file(excel_path: Path) -> None:
         # SOURCE ---------------------------------------------------------------
         normalize_doi_column(df)
         validate_doi_column(df)
+        unique_dois: list[str] = get_unique_dois(df)
+        fetch_apa_references(unique_dois)
+        enrich_reference_column(df)
 
         # Export enriched dataset as CSV with two-row (group / column) header
         export_to_csv(df, output_path / f"{study_id}.csv")

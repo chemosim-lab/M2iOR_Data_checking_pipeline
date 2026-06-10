@@ -34,6 +34,8 @@ _PUBCHEM_VIEW_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compoun
 _PUBCHEM_CAS_CID_URL = (
     "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{cas}/cids/JSON"
 )
+_APA_URL = "https://doi.org/{doi}"
+_APA_HEADERS = {"Accept": "text/x-bibliography; style=apa; locale=en-US"}
 _REQUEST_DELAY = 0.2  # seconds between requests
 
 _CACHE_FILE = Path(__file__).parent.parent / "cache" / "uniprot_sequences.json"
@@ -314,3 +316,37 @@ def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
     )
 
     return list(cas_to_cid.values())
+
+
+def fetch_apa_references(unique_dois: list[str]) -> list[str]:
+    """Fetch APA-formatted references for each DOI and cache them.
+    Returns DOIs for which no reference was found."""
+    to_fetch = get_missing_keys(unique_dois, subdir="sources")
+    failed: list[str] = []
+
+    if to_fetch:
+        print(f"Fetching {len(to_fetch)} APA reference(s) from doi.org...")  # noqa: T201
+        for i, doi in enumerate(to_fetch, start=1):
+            print(f"  [{i}/{len(to_fetch)}] {doi}", end=" ... ", flush=True)  # noqa: T201
+            try:
+                response = requests.get(
+                    _APA_URL.format(doi=doi),
+                    headers=_APA_HEADERS,
+                    timeout=15,
+                )
+                if response.status_code == _HTTP_OK:
+                    set_cache(doi, {"apa": response.text.strip()}, subdir="sources")
+                    print("ok")  # noqa: T201
+                else:
+                    print(f"not found (HTTP {response.status_code})")  # noqa: T201
+                    failed.append(doi)
+            except requests.RequestException as e:
+                print(f"error: {e}")  # noqa: T201
+                failed.append(doi)
+
+            if i < len(to_fetch):
+                time.sleep(_REQUEST_DELAY)
+    else:
+        print(f"All {len(unique_dois)} DOI(s) found in APA cache, skipping API calls.")  # noqa: T201
+
+    return failed
