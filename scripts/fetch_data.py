@@ -196,21 +196,34 @@ def fetch_genbank_data(
     new_count = count_uncached_blast_queries(blast_queries)
     failed = get_failed_blast_queries(blast_queries)
 
+    # "no hit found" results are definitive — no point retrying them.
+    no_hit = [(s, sp, err) for s, sp, err in failed if err == "no hit found"]
+    retryable = [(s, sp, err) for s, sp, err in failed if err != "no hit found"]
+
     if new_count > 0 or failed:
         print(f"\n  ! {len(blast_queries)} sequence(s) have no UniProt ID:")  # noqa: T201
         if new_count > 0:
             print(f"    {new_count} new (never queried, ~1-5 min each)")  # noqa: T201
-        for _seq, sp, err in failed:
+        for _seq, sp, err in retryable:
             print(f"    previously failed — {sp}: {err}")  # noqa: T201
+        for _seq, sp, _err in no_hit:
+            print(f"    no hit found on previous attempt — {sp}")  # noqa: T201
 
-        total = new_count + len(failed)
+        total = new_count + len(retryable) + len(no_hit)
         answer = input(f"  Run/retry {total} BLAST lookup(s)? [y/N] ").strip().lower()
         if answer != "y":
-            msg = f"Aborted by user: {total} BLAST lookup(s) required."
-            raise ValueError(msg)  # noqa: TRY301
+            if new_count > 0 or retryable:
+                # Cannot proceed without these — new queries or recoverable errors.
+                count = new_count + len(retryable)
+                msg = f"Aborted by user: {count} BLAST lookup(s) required."
+                raise ValueError(msg)
+            # Only "no hit found" entries: safe to skip, nothing new to find.
+            return resolve_missing_ids_via_blast(df, protein_groups, blast_queries)
 
-        if failed:
-            clear_blast_cache_entries([(s, sp) for s, sp, _ in failed])
+        if retryable:
+            clear_blast_cache_entries([(s, sp) for s, sp, _ in retryable])
+        if no_hit:
+            clear_blast_cache_entries([(s, sp) for s, sp, _ in no_hit])
 
     return resolve_missing_ids_via_blast(df, protein_groups, blast_queries)
 
