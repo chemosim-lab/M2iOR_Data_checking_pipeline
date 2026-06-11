@@ -2,6 +2,7 @@
 
 import json
 import re
+import threading
 import time
 from io import StringIO
 from pathlib import Path
@@ -18,6 +19,7 @@ _BLAST_CACHE_FILE = Path("cache/receptors/blast_cache.json")
 _POLL_INTERVAL = 10   # seconds between status polls
 _BLAST_TIMEOUT = 300  # give up after 5 minutes
 _ENTREZ_DELAY = 0.4   # NCBI policy: max 3 req/s without API key
+_cache_lock = threading.Lock()
 
 
 def _blast_key(sequence: str, species: str) -> str:
@@ -197,9 +199,11 @@ def fetch_blast_reference(sequence: str, species: str) -> tuple[str, str] | None
     "{species}|{sequence}".  Negative results (no hit) are also cached so that
     repeated runs never re-query NCBI for the same pair.
     """
-    cache = _load_blast_cache()
     key = _blast_key(sequence, species)
-    entry = cache.get(key)
+
+    with _cache_lock:
+        cache = _load_blast_cache()
+        entry = cache.get(key)
 
     if entry is not None:
         acc = entry.get("accession")
@@ -210,8 +214,10 @@ def fetch_blast_reference(sequence: str, species: str) -> tuple[str, str] | None
     accession, error = _run_blast_query(sequence, species)
 
     if accession is None:
-        cache[key] = {"accession": None, "sequence_ref": None, "error": error}
-        _save_blast_cache(cache)
+        with _cache_lock:
+            cache = _load_blast_cache()
+            cache[key] = {"accession": None, "sequence_ref": None, "error": error}
+            _save_blast_cache(cache)
         return None
 
     print(f"    [BLAST] Fetching sequence for {accession} ...", flush=True)  # noqa: T201
@@ -220,6 +226,8 @@ def fetch_blast_reference(sequence: str, species: str) -> tuple[str, str] | None
     if ref_sequence is None:
         return None
 
-    cache[key] = {"accession": accession, "sequence_ref": ref_sequence}
-    _save_blast_cache(cache)
+    with _cache_lock:
+        cache = _load_blast_cache()
+        cache[key] = {"accession": accession, "sequence_ref": ref_sequence}
+        _save_blast_cache(cache)
     return accession, ref_sequence

@@ -1,5 +1,6 @@
 # pipeline/scripts/process_receptors.py
 import re
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from locale import normalize
 from re import Match
 from typing import Any, cast
@@ -228,16 +229,22 @@ def resolve_missing_ids_via_blast(
     Results are persisted in cache/blast_cache.json.  Returns a transient
     {accession: sequence_ref} dict for use in enrich_with_reference_and_mutations.
     """
-    # One API call per unique pair (caching handled inside fetch_blast_reference)
+    # Submit up to 3 BLAST jobs concurrently — each spends most of its time polling,
+    # so threads are efficient. Cache writes are protected by a lock in fetch_blast.
     accession_map: dict[tuple[str, str], str] = {}
     blast_refs: dict[str, str] = {}
-    for i, (seq, species) in enumerate(queries, start=1):
-        print(f"  [BLAST] [{i}/{len(queries)}] species={species!r} ...", flush=True)  # noqa: T201
-        result = fetch_blast_reference(seq, species)
-        if result is not None:
-            accession, seq_ref = result
-            accession_map[(seq, species)] = accession
-            blast_refs[accession] = seq_ref
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        future_to_query = {
+            executor.submit(fetch_blast_reference, seq, species): (seq, species)
+            for seq, species in queries
+        }
+        for future in as_completed(future_to_query):
+            seq, species = future_to_query[future]
+            result = future.result()
+            if result is not None:
+                accession, seq_ref = result
+                accession_map[(seq, species)] = accession
+                blast_refs[accession] = seq_ref
 
     # Fill UNIPROT_ID cells — vectorized per group
     for group in groups:
