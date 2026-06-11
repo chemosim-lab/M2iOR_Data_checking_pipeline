@@ -11,6 +11,20 @@ _CID_NUM_RE = re.compile(r"^\d+(?:\.\d+)?$")
 
 
 
+def validate_cid_or_cas(df: pd.DataFrame) -> None:
+    """Raise ValueError if any Molecule row has neither a CID nor a CAS value."""
+    mol = df[MOLECULE]
+    cid_col = mol[CID].astype(str).str.strip()
+    cid_missing = mol[CID].isna() | cid_col.isin(["", "0", "nan"])
+    cas_missing = mol[CAS].isna() | mol[CAS].astype(str).str.strip().isin(["", "nan"])
+    both_missing = cid_missing & cas_missing
+    if both_missing.any():
+        rows = both_missing[both_missing].index.tolist()
+        raise ValueError(
+            f"Molecule row(s) with neither CID nor CAS at index(es): {rows}"
+        )
+
+
 def get_unique_cids(df: pd.DataFrame) -> list[int]:
     """Collect all non-null unique CIDs from the Molecule group."""
     if MOLECULE not in df.columns.get_level_values(0):

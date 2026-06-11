@@ -22,7 +22,11 @@ from scripts.fetch_data import (
     fetch_pubchem_data,
     fetch_uniprot_data,
 )
-from scripts.process_molecules import enrich_molecule_columns, get_unique_cids
+from scripts.process_molecules import (
+    enrich_molecule_columns,
+    get_unique_cids,
+    validate_cid_or_cas,
+)
 from scripts.process_receptors import (
     add_empty_column_after,
     collect_blast_queries,
@@ -139,6 +143,7 @@ def process_raw_excel_file(excel_path: Path) -> None:
 
         # ----------------------------------------------------------------------
         # MOLECULES ------------------------------------------------------------
+        validate_cid_or_cas(df)
         all_unique_cids: list[int] = get_unique_cids(df)
         failed_cids = fetch_pubchem_data(all_unique_cids)
 
