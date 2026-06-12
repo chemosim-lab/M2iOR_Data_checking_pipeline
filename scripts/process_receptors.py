@@ -159,6 +159,32 @@ def process_receptors_name_columns(
         receptors_names = df[group][UNIPROT_ID].map(receptor_name_by_uid)
         df.loc[:, (group, RECEPTOR_NAME)] = receptors_names
 
+    enrich_species_column(df, groups, all_unique_uniprot_ids)
+
+
+def enrich_species_column(
+    df: pd.DataFrame, groups: list[str], all_unique_uniprot_ids: list[str]
+) -> None:
+    """Replace Species values with the organism scientific name from UniProt cache."""
+    species_by_uid: dict[str, str] = {}
+    for uid in all_unique_uniprot_ids:
+        data = get_cache(uid, subdir="receptors")
+        if not data:
+            continue
+        try:
+            name: str = data["organism"]["scientificName"]
+            if name:
+                species_by_uid[uid] = name
+        except (KeyError, TypeError):
+            continue
+
+    for group in groups:
+        uid_col = df[group][UNIPROT_ID].astype(str).str.strip()
+        updated = uid_col.map(species_by_uid)
+        mask = updated.notna()
+        if mask.any():
+            df.loc[updated.index[mask], (group, SPECIES)] = updated[mask].to_numpy()
+
 
 def rename_column(
     df: pd.DataFrame, groups: list[str], old_column_name: str, new_column_name: str
