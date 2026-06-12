@@ -22,11 +22,11 @@ from scripts.columns import (
 from scripts.fetch_blast import fetch_blast_reference
 from scripts.find_protein_mutations import align_and_annotate
 
-_OR_NAME_RE = re.compile(r"^Or\d+[a-z]?$")
-_OR_NAME_RE_LOOSE = re.compile(r"^Or(\d+)([a-zA-Z]?)$", re.IGNORECASE)
+_OR_NAME_RE = re.compile(r"^Or\d+(?:-\d+)?[a-z]?$")
+_OR_NAME_RE_LOOSE = re.compile(r"^Or(\d+)(-\d+)?([a-zA-Z]?)$", re.IGNORECASE)
 _ORCO_RE_LOOSE = re.compile(r"^Orco$", re.IGNORECASE)
 _OR_FROM_DESC_RE = re.compile(
-    r"olfactory\s+receptor\s+(?:Or)?(\d+)([a-zA-Z]?)", re.IGNORECASE
+    r"olfactory\s+receptor\s+(?:Or)?(\d+)(-\d+)?([a-zA-Z]?)", re.IGNORECASE
 )
 
 
@@ -55,7 +55,7 @@ def _get_normalized_receptor_name(names: list[str]) -> str | None:
         None,
     )
     if m:
-        return "Or" + m.group(1) + m.group(2).lower()
+        return "Or" + m.group(1) + (m.group(2) or "") + m.group(3).lower()
     if any(_ORCO_RE_LOOSE.match(name) for name in names):
         return "Orco"
     return None
@@ -79,10 +79,10 @@ def _extract_receptor_name_data(uid: str, data: dict[str, Any]) -> dict[str, Any
 
 
 def _extract_or_name_from_description(desc: str) -> str | None:
-    """Extract a normalized Or<N>[a-z] name from a protein description string."""
+    """Extract a normalized Or<N>[-N][a-z] name from a protein description string."""
     m = _OR_FROM_DESC_RE.search(desc)
     if m:
-        return "Or" + m.group(1) + m.group(2).lower()
+        return "Or" + m.group(1) + (m.group(2) or "") + m.group(3).lower()
     return None
 
 
