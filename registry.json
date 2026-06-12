@@ -4,34 +4,83 @@
     "file_path": "input/test_mut.xlsx",
     "status": "FAILED",
     "processed_at": "2026-06-02T16:50:26.630040",
-    "error_message": "input/test_mut.xlsx: colonnes inattendues dans 'Response'.\n  attendu : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value Nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']\n  trouvé  : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']"
+    "error_message": "input/test_mut.xlsx: missing columns in 'Response'.\n  missing : ['Value Nature']\n  found   : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']"
   },
   {
     "study_id": "deFouchier_NatCommun-2017",
     "file_path": "input/clean_Seb/deFouchier_NatCommun-2017.xlsx",
-    "status": "FAILED",
-    "processed_at": "2026-06-05T19:15:15.171113",
-    "error_message": "Aborted by user: 12 BLAST lookup(s) required."
+    "status": "DONE",
+    "processed_at": "2026-06-11T11:17:04.967636",
+    "error_message": null
   },
   {
     "study_id": "03_ThanetP_data_complete",
     "file_path": "input/clean_Seb/03_ThanetP_data_complete.xlsx",
-    "status": "FAILED",
-    "processed_at": null,
-    "error_message": "Aborted by user: 51 BLAST lookup(s) required."
+    "status": "DONE",
+    "processed_at": "2026-06-11T19:44:11.690405",
+    "error_message": null
   },
   {
     "study_id": "Yan_test",
     "file_path": "input/clean_Seb/Yan_test.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-06-09T17:21:47.566108",
-    "error_message": "UID:[KC881255] No Or<N>[a-z] receptor name found - geneName='KC881255', synonyms=None"
+    "status": "FAILED",
+    "processed_at": "2026-06-10T13:57:34.162506",
+    "error_message": "Column 'Value' contains non-float value(s) at row(s): [2]"
   },
   {
     "study_id": "Yan_jinphys-2015",
     "file_path": "input/clean_Seb/Yan_jinphys-2015.xlsx",
     "status": "DONE",
-    "processed_at": "2026-06-09T17:16:27.720853",
+    "processed_at": "2026-06-10T19:00:36.773497",
+    "error_message": null
+  },
+  {
+    "study_id": "Mo_JAFC-2023",
+    "file_path": "input/clean_Seb/Mo_JAFC-2023.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-06-12T09:59:28.394275",
+    "error_message": null
+  },
+  {
+    "study_id": "Kreher_Neuron-2005",
+    "file_path": "input/clean_Seb/Kreher_Neuron-2005.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-06-10T19:01:34.914024",
+    "error_message": null
+  },
+  {
+    "study_id": "Kreher_Neuron-2008",
+    "file_path": "input/clean_Seb/Kreher_Neuron-2008.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-06-10T19:01:28.756882",
+    "error_message": null
+  },
+  {
+    "study_id": "Mathew_PNAS-2013",
+    "file_path": "input/clean_Seb/Mathew_PNAS-2013.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-06-10T19:01:15.212218",
+    "error_message": null
+  },
+  {
+    "study_id": "Tanaka_CurrBiol-2009",
+    "file_path": "input/clean_Seb/Tanaka_CurrBiol-2009.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "Column 'Value' contains non-float value(s) at row(s): [17, 27, 34, 36, 38, 39, 43, 44, 45, 46, 47, 48, 49, 53, 58, 63, 64, 65, 66, 67, 68, 69, 71, 76, 87, 89, 107, 126, 127, 128, 129, 130]"
+  },
+  {
+    "study_id": "Wang_PNAS-2010",
+    "file_path": "input/clean_Seb/Wang_PNAS-2010.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "Column 'Concentration' contains non-float value(s) at row(s): [25, 28, 30, 32, 106, 119, 122, 128, 132, 158, 194, 210, 220, 223, 241, 257, 374, 399, 402, 435, 552, 577, 658, 662, 667, 755, 761, 803, 826, 849, 875, 929, 955, 1024, 1192, 1211, 1213, 1308, 1382, 1390, 1398, 1440, 1444, 1466, 1470, 1560, 2054, 2058, 2069, 2078, 2145, 2150, 2154, 2172, 2205, 2230, 2233, 2236, 2237, 2261, 2265, 2282, 2306, 2310, 2313, 2418, 2431, 2455, 2470, 2883, 2893, 2908, 2936, 2954, 2972, 2985, 2993, 3001, 3046, 3071, 3137, 3153, 3179, 3217, 3220]"
+  },
+  {
+    "study_id": "deFouchier_FrontEcolEvol-2015",
+    "file_path": "input/clean_Seb/deFouchier_FrontEcolEvol-2015.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-06-10T18:51:10.455915",
     "error_message": null
   }
 ]
