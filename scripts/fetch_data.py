@@ -41,19 +41,6 @@ _REQUEST_DELAY = 0.2  # seconds between requests
 _CACHE_FILE = Path(__file__).parent.parent / "cache" / "uniprot_sequences.json"
 
 
-# def _load_disk_cache() -> dict[str, str | None]:
-#     if _CACHE_FILE.exists():
-#         with open(_CACHE_FILE, encoding="utf-8") as f:
-#             return json.load(f)
-#     return {}
-
-
-# def _save_disk_cache(cache: dict[str, str | None]) -> None:
-#     _CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
-#     with open(_CACHE_FILE, "w", encoding="utf-8") as f:
-#         json.dump(cache, f, indent=2)
-
-
 def _fetch_data(accession: str) -> Any | None:
     url = _UNIPROTKB_ENDPOINT_URL.format(accession=accession)
     try:
