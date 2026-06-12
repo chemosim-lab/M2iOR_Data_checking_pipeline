@@ -201,8 +201,10 @@ if __name__ == "__main__":
     )
     _ = parser.add_argument(
         "--force",
-        action="store_true",
-        help="Reprocess all files, including already processed ones (DONE)",
+        nargs="?",
+        const="__all__",
+        metavar="FILE",
+        help="Reprocess files, ignoring DONE/FAILED status. Without argument: reprocess all. With FILE: reprocess only that file.",
     )
     args = parser.parse_args()
 
@@ -211,7 +213,7 @@ if __name__ == "__main__":
     file_arg = cast(str | None, args.file)
     do_pending = cast(bool, args.pending)
     do_retry = cast(bool, args.retry)
-    do_force = cast(bool, args.force)
+    force_arg = cast(str | None, args.force)
 
     input_path = Path("input")
 
@@ -236,16 +238,25 @@ if __name__ == "__main__":
         for excel_file in found_files:
             print(f"File: {excel_file.file_path}")
             process_raw_excel_file(excel_file.file_path)
-    elif do_force:
-        # Reset all existing trackers to PENDING before reprocessing
-        for tracker in registry.all_done() + registry.all_failed():
-            tracker.status = ProcessingStatus.PENDING
-            tracker.error_message = None
-        found_file_paths = sorted(input_path.glob("**/*.xlsx"))
-        print(f"Found {len(found_file_paths)} files — forcing full reprocess")
-        _ = input("Press Enter to continue")
-        for excel_file_path in found_file_paths:
-            print(f"File: {excel_file_path}")
-            process_raw_excel_file(excel_file_path)
+    elif force_arg is not None:
+        if force_arg == "__all__":
+            # Reset all existing trackers to PENDING before reprocessing
+            for tracker in registry.all_done() + registry.all_failed():
+                tracker.status = ProcessingStatus.PENDING
+                tracker.error_message = None
+            found_file_paths = sorted(input_path.glob("**/*.xlsx"))
+            print(f"Found {len(found_file_paths)} files — forcing full reprocess")
+            _ = input("Press Enter to continue")
+            for excel_file_path in found_file_paths:
+                print(f"File: {excel_file_path}")
+                process_raw_excel_file(excel_file_path)
+        else:
+            target_path = Path(force_arg)
+            study_id = target_path.stem
+            if study_id in registry:
+                tracker = registry.get(study_id)
+                tracker.status = ProcessingStatus.PENDING
+                tracker.error_message = None
+            process_raw_excel_file(target_path)
     else:
         parser.print_help()

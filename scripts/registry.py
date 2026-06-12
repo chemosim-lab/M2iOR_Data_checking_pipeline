@@ -66,6 +66,9 @@ class StudyProcessingRegistry:
         self._studies[study_id] = tracker
         return tracker
 
+    def __contains__(self, study_id: str) -> bool:
+        return study_id in self._studies
+
     def get(self, study_id: str) -> StudyFileTracker:
         try:
             return self._studies[study_id]
