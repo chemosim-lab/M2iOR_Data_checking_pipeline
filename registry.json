@@ -17,7 +17,7 @@
     "study_id": "03_ThanetP_data_complete",
     "file_path": "input/clean_Seb/03_ThanetP_data_complete.xlsx",
     "status": "DONE",
-    "processed_at": "2026-06-11T19:44:11.690405",
+    "processed_at": "2026-06-12T14:41:17.749854",
     "error_message": null
   },
   {
@@ -74,13 +74,20 @@
     "file_path": "input/clean_Seb/Wang_PNAS-2010.xlsx",
     "status": "FAILED",
     "processed_at": null,
-    "error_message": "Column 'Concentration' contains non-float value(s) at row(s): [25, 28, 30, 32, 106, 119, 122, 128, 132, 158, 194, 210, 220, 223, 241, 257, 374, 399, 402, 435, 552, 577, 658, 662, 667, 755, 761, 803, 826, 849, 875, 929, 955, 1024, 1192, 1211, 1213, 1308, 1382, 1390, 1398, 1440, 1444, 1466, 1470, 1560, 2054, 2058, 2069, 2078, 2145, 2150, 2154, 2172, 2205, 2230, 2233, 2236, 2237, 2261, 2265, 2282, 2306, 2310, 2313, 2418, 2431, 2455, 2470, 2883, 2893, 2908, 2936, 2954, 2972, 2985, 2993, 3001, 3046, 3071, 3137, 3153, 3179, 3217, 3220]"
+    "error_message": "Column 'Concentration' contains non-float value(s) at row(s): [826, 849, 875, 929, 955, 1024, 1192, 1211, 1213, 1308, 1382, 1390, 1398, 1440, 1444, 1466, 1470, 1560, 2054, 2058, 2069, 2078, 2145, 2150, 2154, 2172, 2205, 2230, 2233, 2236, 2237, 2261, 2265, 2282, 2306, 2310, 2313, 2418, 2431, 2455, 2470, 2883, 2893, 2908, 2936, 2954, 2972, 2985, 2993, 3001, 3046, 3071, 3137, 3153, 3179, 3217, 3220]"
   },
   {
     "study_id": "deFouchier_FrontEcolEvol-2015",
     "file_path": "input/clean_Seb/deFouchier_FrontEcolEvol-2015.xlsx",
+    "status": "FAILED",
+    "processed_at": "2026-06-15T10:53:49.893045",
+    "error_message": "Aborted by user: 4 BLAST lookup(s) required."
+  },
+  {
+    "study_id": "test",
+    "file_path": "input/clean_Seb/test.xlsx",
     "status": "DONE",
-    "processed_at": "2026-06-10T18:51:10.455915",
+    "processed_at": "2026-06-12T12:50:15.839008",
     "error_message": null
   }
 ]
