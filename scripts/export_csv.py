@@ -27,7 +27,7 @@ _GROUP_RENAME: dict[str, str] = {
 
 # Renames individual column names for the output CSV.
 _COL_RENAME: dict[str, str] = {
-    "UniProt ID": "ID",
+    "Accession": "ID",
     "sequence_ref": "Sequence_ref",
     "solvent used for dilution": "Solvent used for dilution",
 }
