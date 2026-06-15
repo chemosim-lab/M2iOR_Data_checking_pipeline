@@ -1,15 +1,17 @@
 # pipeline/scripts/process_receptors.py
+import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from re import Match
 from typing import Any, cast
 
+import colorlog
 import pandas as pd
 
 from scripts.cache_manager import get_cache
 from scripts.columns import (
+    ACCESSION,
     DATABASE,
-    GENE_NAME,
     IDENTITY,
     MUTATION,
     RECEPTOR_NAME,
@@ -21,6 +23,8 @@ from scripts.columns import (
 from scripts.fetch_blast import fetch_blast_reference
 from scripts.find_protein_mutations import align_and_annotate
 
+logger = colorlog.getLogger(__name__)
+
 _OR_NAME_RE = re.compile(r"^Or\d+(?:-\d+)?[a-z]?$")
 _OR_NAME_RE_LOOSE = re.compile(r"^Or(\d+)(-\d+)?([a-zA-Z]?)$", re.IGNORECASE)
 _ORCO_RE_LOOSE = re.compile(r"^Orco$", re.IGNORECASE)
@@ -29,19 +33,21 @@ _OR_FROM_DESC_RE = re.compile(
 )
 
 
-def get_unique_uniprot_ids(
+def get_unique_accessions(
     df: pd.DataFrame, groups: list[str], column_name: str
 ) -> list[str]:
-    """Collect all non-null unique UniProt IDs across the given column groups."""
-    ids: set[str] = set()
+    """Collect all non-null unique accessions (UniProt & NCBI) across the given
+    column groups."""
+    accessions_set: set[str] = set()
     for group in groups:
         if group not in df.columns.get_level_values(0):
             msg = f"Group {group} not in the DataFrame."
             raise ValueError(msg)
         col = df[group][column_name]
-        ids.update(col.dropna().astype(str).str.strip().unique())
-    ids.discard("")
-    return sorted(ids)
+        accessions_set.update(col.dropna().astype(str).str.strip().unique())
+    accessions_set.discard("")
+    logger.info("Found %d unique accession(s).", len(accessions_set))
+    return sorted(accessions_set)
 
 
 def _get_normalized_receptor_name(names: list[str]) -> str | None:
@@ -205,33 +211,30 @@ def add_empty_column_after(
 def collect_blast_queries(
     df: pd.DataFrame,
     groups: list[str],
-    fallback_uids: list[str] | None = None,
+    fallback_accessions: list[str] | None = None,
 ) -> list[tuple[str, str]]:
     """
-    Return unique (sequence, species) pairs for rows that have no UniProt ID
-    but have both a Sequence and a Species value.  Fully vectorized — no per-row
-    iteration.
-
-    fallback_uids: UIDs for which UniProt returned no data — rows with these IDs
-    are also included as BLAST candidates.
+    Return unique (sequence, species) pairs for rows that have no UniProt or NCBI
+    accession number but have both a Sequence and a Species value.
     """
-    fallback_set: set[str] = set(fallback_uids) if fallback_uids else set()
+    fallback_set: set[str] = set(fallback_accessions) if fallback_accessions else set()
     queries: set[tuple[str, str]] = set()
     for group in groups:
         if group not in df.columns.get_level_values(0):
             continue
         sub = df[group]
-        uid_col = sub[UNIPROT_ID].astype(str).str.strip()
-        missing = sub[UNIPROT_ID].isna() | (uid_col == "") | uid_col.isin(fallback_set)
+        uid_col = sub[ACCESSION].astype(str).str.strip()
+        missing = sub[ACCESSION].isna() | (uid_col == "") | uid_col.isin(fallback_set)
         candidates = sub.loc[missing, [SEQUENCE, SPECIES]].dropna()
         seq = candidates[SEQUENCE].astype(str).str.strip()
         species = candidates[SPECIES].astype(str).str.strip()
         valid = (seq != "") & (species != "")
         queries.update(zip(seq[valid], species[valid], strict=False))
+    logger.warning("%s sequence(s) have no accession number.", len(queries))
     return list(queries)
 
 
-def resolve_missing_ids_via_blast(
+def resolve_missing_accessions_via_blast(
     df: pd.DataFrame,
     groups: list[str],
     queries: list[tuple[str, str]],
@@ -261,14 +264,12 @@ def resolve_missing_ids_via_blast(
                 accession_map[(seq, species)] = accession
                 blast_refs[accession] = seq_ref
 
-    # Fill UNIPROT_ID cells — vectorized per group
+    # Fill ACCESSION cells — vectorized per group
     for group in groups:
         if group not in df.columns.get_level_values(0):
             continue
         sub = df[group]
-        missing = sub[UNIPROT_ID].isna() | (
-            sub[UNIPROT_ID].astype(str).str.strip() == ""
-        )
+        missing = sub[ACCESSION].isna() | (sub[ACCESSION].astype(str).str.strip() == "")
         seq_col = sub.loc[missing, SEQUENCE].astype(str).str.strip()
         species_col = sub.loc[missing, SPECIES].astype(str).str.strip()
         pairs = zip(seq_col, species_col, strict=False)
@@ -279,7 +280,7 @@ def resolve_missing_ids_via_blast(
         )
         filled = new_ids.dropna()
         if not filled.empty:
-            df.loc[filled.index, (group, UNIPROT_ID)] = filled
+            df.loc[filled.index, (group, ACCESSION)] = filled
 
     return blast_refs
 

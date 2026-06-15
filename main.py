@@ -1,12 +1,16 @@
 # pipeline/main.py
 
 import argparse
+import logging
+import sys
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+import colorlog
 from pandas.core.frame import DataFrame
 
 from scripts.columns import (
+    ACCESSION,
     DATABASE,
     GENE_NAME,
     IDENTITY,
@@ -34,7 +38,7 @@ from scripts.process_receptors import (
     add_empty_column_after,
     collect_blast_queries,
     enrich_with_reference_and_mutations,
-    get_unique_uniprot_ids,
+    get_unique_accessions,
     process_receptors_name_columns,
 )
 from scripts.process_responses import (
@@ -60,8 +64,10 @@ LARAVEL_DATA_PATH = Path(
 )
 REGISTRY_FILE = Path("./registry.json")
 
+logger = colorlog.getLogger(__name__)
 
-def process_raw_excel_file(excel_path: Path) -> None:
+
+def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> None:
     study_id: str = excel_path.stem  # e.g. "001_Kreher_Neuron_2005"
     output_path = LARAVEL_DATA_PATH
     output_path.mkdir(parents=True, exist_ok=True)
@@ -86,38 +92,40 @@ def process_raw_excel_file(excel_path: Path) -> None:
         # REFORMAT -------------------------------------------------------------
         df = normalize_df(df)
         rename_column(df, old_column_name=GENE_NAME, new_column_name=RECEPTOR_NAME)
+        rename_column(df, old_column_name=UNIPROT_ID, new_column_name=ACCESSION)
 
         # ----------------------------------------------------------------------
         # RECEPTORS AND CO-RECEPTORS -------------------------------------------
-        all_unique_uniprot_ids: list[str] = get_unique_uniprot_ids(
-            df, groups=protein_groups, column_name="UniProt ID"
+        unique_accessions: list[str] = get_unique_accessions(
+            df, groups=protein_groups, column_name=ACCESSION
         )
 
         # Fetch Uniprot data from accession number (UniprotID) and store them
         # in the cache
-        failed_uids: list[str] = fetch_uniprot_data(all_unique_uniprot_ids)
+        failed_accessions: list[str] = fetch_uniprot_data(unique_accessions)
         # NCBI fallback
-        failed_uids = fetch_ncbi_data(all_unique_uniprot_ids, failed_uids)
+        failed_accessions = fetch_ncbi_data(unique_accessions, failed_accessions)
 
-        # For rows without a UniProt ID or NCBI accession but only have a sequence,
+        # For rows without a UniProt or NCBI accession but only have a sequence,
         # fall back to BLAST against NCBI nr_cluster_seq.
         # Deduplicate queries first — one API call per unique (sequence, species) pair.
-        blast_queries = collect_blast_queries(
-            df, protein_groups, fallback_uids=failed_uids
-        )
-        blast_refs: dict[str, str] = fetch_genbank_data(
-            df, protein_groups, blast_queries
+        blast_queries: list[tuple[str, str]] = collect_blast_queries(
+            df, protein_groups, fallback_accessions=failed_accessions
         )
 
-        # BLAST may have written new GenBank accessions into the UniProt ID column.
+        refseq_by_accession: dict[str, str] = fetch_genbank_data(
+            df, protein_groups, blast_queries, force_blast=force_blast
+        )
+
+        # BLAST may have written new GenBank accessions into the 'Accession' column.
         # Re-collect all UIDs so that BLAST-discovered accessions are also named.
-        all_unique_ids_after_blast: list[str] = get_unique_uniprot_ids(
-            df, groups=protein_groups, column_name="UniProt ID"
+        all_unique_ids_after_blast: list[str] = get_unique_accessions(
+            df, groups=protein_groups, column_name=ACCESSION
         )
         blast_only_accessions = [
             uid
             for uid in all_unique_ids_after_blast
-            if uid not in set(all_unique_uniprot_ids)
+            if uid not in set(unique_accessions)
         ]
         if blast_only_accessions:
             fetch_ncbi_data(blast_only_accessions, blast_only_accessions)
@@ -135,7 +143,7 @@ def process_raw_excel_file(excel_path: Path) -> None:
 
         # Add Reference sequences, identity (%) and mutations vs UniProt reference
         enrich_with_reference_and_mutations(
-            df, protein_groups, all_unique_ids_after_blast, blast_refs
+            df, protein_groups, all_unique_ids_after_blast, refseq_by_accession
         )
 
         # Use fetched data to check "Receptor Name" columns for Receptor and Co-Receptor
@@ -185,7 +193,35 @@ def process_raw_excel_file(excel_path: Path) -> None:
     registry.save(REGISTRY_FILE)
 
 
+_LOG_COLORS = {
+    "DEBUG": "cyan",
+    "INFO": "green",
+    "WARNING": "yellow",
+    "ERROR": "red",
+    "CRITICAL": "bold_red",
+}
+
+
+class ColoredLevelFormatter(logging.Formatter):
+    _default = colorlog.ColoredFormatter(
+        fmt="%(log_color)s[%(levelname)s] %(message)s",
+        log_colors=_LOG_COLORS,
+    )
+    _debug = colorlog.ColoredFormatter(
+        fmt="%(log_color)s%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        log_colors=_LOG_COLORS,
+    )
+
+    def format(self, record: logging.LogRecord) -> str:
+        formatter = self._debug if record.levelno == logging.DEBUG else self._default
+        return formatter.format(record)
+
+
 if __name__ == "__main__":
+    _handler = colorlog.StreamHandler()
+    _handler.setFormatter(ColoredLevelFormatter())
+    logging.getLogger().addHandler(_handler)
+    logging.getLogger().setLevel(logging.INFO)
     parser = argparse.ArgumentParser(description="M2iOR processing pipeline")
     _ = parser.add_argument(
         "--status", action="store_true", help="Show processing status"
@@ -249,7 +285,7 @@ if __name__ == "__main__":
             _ = input("Press Enter to continue")
             for excel_file_path in found_file_paths:
                 print(f"File: {excel_file_path}")
-                process_raw_excel_file(excel_file_path)
+                process_raw_excel_file(excel_file_path, force_blast=True)
         else:
             target_path = Path(force_arg)
             study_id = target_path.stem
@@ -257,6 +293,6 @@ if __name__ == "__main__":
                 tracker = registry.get(study_id)
                 tracker.status = ProcessingStatus.PENDING
                 tracker.error_message = None
-            process_raw_excel_file(target_path)
+            process_raw_excel_file(target_path, force_blast=True)
     else:
         parser.print_help()
