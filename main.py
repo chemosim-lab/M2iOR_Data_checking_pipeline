@@ -4,6 +4,8 @@ import argparse
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
+from pandas.core.frame import DataFrame
+
 from scripts.columns import (
     DATABASE,
     GENE_NAME,
@@ -22,6 +24,7 @@ from scripts.fetch_data import (
     fetch_pubchem_data,
     fetch_uniprot_data,
 )
+from scripts.normalize_dataframe import normalize_df, rename_column
 from scripts.process_molecules import (
     enrich_molecule_columns,
     get_unique_cids,
@@ -33,8 +36,6 @@ from scripts.process_receptors import (
     enrich_with_reference_and_mutations,
     get_unique_uniprot_ids,
     process_receptors_name_columns,
-    rename_column,
-    strip_column,
 )
 from scripts.process_responses import (
     validate_concentration_column,
@@ -78,29 +79,28 @@ def process_raw_excel_file(excel_path: Path) -> None:
         df: DataFrame = get_raw_data_from_excel_file(excel_path)
 
         # ----------------------------------------------------------------------
-        # RECEPTORS AND CO-RECEPTORS -------------------------------------------
+        # EXCEL GROUPS ---------------------------------------------------------
         protein_groups = ["Receptor", "Co-Receptor"]
+
+        # ----------------------------------------------------------------------
+        # REFORMAT -------------------------------------------------------------
+        df = normalize_df(df)
+        rename_column(df, old_column_name=GENE_NAME, new_column_name=RECEPTOR_NAME)
+
+        # ----------------------------------------------------------------------
+        # RECEPTORS AND CO-RECEPTORS -------------------------------------------
         all_unique_uniprot_ids: list[str] = get_unique_uniprot_ids(
             df, groups=protein_groups, column_name="UniProt ID"
         )
 
         # Fetch Uniprot data from accession number (UniprotID) and store them
         # in the cache
-        failed_uids = fetch_uniprot_data(all_unique_uniprot_ids)
+        failed_uids: list[str] = fetch_uniprot_data(all_unique_uniprot_ids)
         # NCBI fallback
         failed_uids = fetch_ncbi_data(all_unique_uniprot_ids, failed_uids)
 
-        # Rename "Gene Name" columns to "Receptor Name"
-        rename_column(
-            df,
-            protein_groups,
-            old_column_name=GENE_NAME,
-            new_column_name=RECEPTOR_NAME,
-        )
-
-        strip_column(df, protein_groups, UNIPROT_ID)
-
-        # For rows without a UniProt ID, fall back to BLAST against NCBI nr.
+        # For rows without a UniProt ID or NCBI accession but only have a sequence,
+        # fall back to BLAST against NCBI nr_cluster_seq.
         # Deduplicate queries first — one API call per unique (sequence, species) pair.
         blast_queries = collect_blast_queries(
             df, protein_groups, fallback_uids=failed_uids

@@ -1,7 +1,6 @@
 # pipeline/scripts/process_receptors.py
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from locale import normalize
 from re import Match
 from typing import Any, cast
 
@@ -37,16 +36,12 @@ def get_unique_uniprot_ids(
     ids: set[str] = set()
     for group in groups:
         if group not in df.columns.get_level_values(0):
-            raise ValueError(f"Group {group} not in the DataFrame.")
+            msg = f"Group {group} not in the DataFrame."
+            raise ValueError(msg)
         col = df[group][column_name]
         ids.update(col.dropna().astype(str).str.strip().unique())
     ids.discard("")
     return sorted(ids)
-
-
-def strip_column(df: pd.DataFrame, groups: list[str], column_name: str) -> None:
-    for group in groups:
-        df.loc[:, (group, column_name)] = df[group][column_name].astype(str).str.strip()
 
 
 def _get_normalized_receptor_name(names: list[str]) -> str | None:
@@ -175,7 +170,7 @@ def enrich_species_column(
             name: str = data["organism"]["scientificName"]
             if name:
                 species_by_uid[uid] = name
-        except (KeyError, TypeError):
+        except KeyError, TypeError:
             continue
 
     for group in groups:
@@ -184,12 +179,6 @@ def enrich_species_column(
         mask = updated.notna()
         if mask.any():
             df.loc[updated.index[mask], (group, SPECIES)] = updated[mask].to_numpy()
-
-
-def rename_column(
-    df: pd.DataFrame, groups: list[str], old_column_name: str, new_column_name: str
-) -> None:
-    df.columns = df.rename(columns={old_column_name: new_column_name}, level=1).columns
 
 
 def add_empty_column_after(
