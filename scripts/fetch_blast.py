@@ -28,7 +28,7 @@ def _blast_key(sequence: str, species: str) -> str:
     return f"{species.strip().lower()}|{sequence.strip()}"
 
 
-def _load_blast_cache() -> dict[str, dict]:
+def _load_blast_cache() -> dict[str, dict[str, str]]:
     if _BLAST_CACHE_FILE.exists():
         with _BLAST_CACHE_FILE.open(encoding="utf-8") as f:
             return json.load(f)
@@ -175,13 +175,26 @@ def get_failed_blast_queries(
     Each item is (sequence, species, error_reason).
     """
     cache = _load_blast_cache()
-    failed = []
+    failed: list[tuple[str, str, str]] = []
     for seq, species in queries:
-        entry = cache.get(_blast_key(seq, species))
+        entry: dict[str, str] | None = cache.get(_blast_key(seq, species))
         if entry is not None and not entry.get("accession"):
             error = entry.get("error", "unknown error")
             failed.append((seq, species, error))
     return failed
+
+
+def get_successful_blast_queries(
+    queries: list[tuple[str, str]],
+) -> list[tuple[str, str]]:
+    """Return (sequence, species) pairs that have a successful cache entry."""
+    cache = _load_blast_cache()
+    return [
+        (seq, species)
+        for seq, species in queries
+        if (entry := cache.get(_blast_key(seq, species))) is not None
+        and entry.get("accession")
+    ]
 
 
 def clear_blast_cache_entries(queries: list[tuple[str, str]]) -> None:
