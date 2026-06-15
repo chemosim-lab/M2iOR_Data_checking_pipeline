@@ -11,14 +11,16 @@ import requests
 from Bio import Entrez, SeqIO
 from Bio.Blast import NCBIXML
 
+from scripts.tools.get_common_name import get_taxon_id
+
 # Required by NCBI for all Entrez/BLAST requests.
 _ENTREZ_EMAIL = "andre.lanrezac@univ-cotedazur.fr"
 
 _BLAST_URL = "https://blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
 _BLAST_CACHE_FILE = Path("cache/receptors/blast_cache.json")
-_POLL_INTERVAL = 10   # seconds between status polls
-_BLAST_TIMEOUT = 300  # give up after 5 minutes
-_ENTREZ_DELAY = 0.4   # NCBI policy: max 3 req/s without API key
+_POLL_INTERVAL = 10  # seconds between status polls
+_BLAST_TIMEOUT = 600  # give up after 10 minutes
+_ENTREZ_DELAY = 0.4  # NCBI policy: max 3 req/s without API key
 _cache_lock = threading.Lock()
 
 
@@ -54,17 +56,21 @@ def _fetch_full_sequence(accession: str) -> str | None:
         return None
 
 
-def _submit_blast(sequence: str, species: str) -> str | None:
+def _submit_blast(sequence: str, species_name: str) -> str | None:
     """Submit a BLASTP job to NCBI. Returns the RID on success."""
+    taxon_id = get_taxon_id(species_name)
+    print(f"txid{taxon_id}")
     data = {
         "CMD": "Put",
         "PROGRAM": "blastp",
-        "DATABASE": "nr",
+        "DATABASE": "nr_cluster_seq",
         "QUERY": sequence,
-        "ENTREZ_QUERY": f"{species}[Organism]",
+        "MATRIX": "BLOSUM62",
+        "ENTREZ_QUERY": f"txid{taxon_id} [ORGN]",
+        "EXPECT": "0.05",
         "FORMAT_TYPE": "XML",
         "HITLIST_SIZE": "1",
-        "ALIGNMENTS": "1",
+        "FILTER": "F",
     }
     try:
         response = requests.post(_BLAST_URL, data=data, timeout=30)
