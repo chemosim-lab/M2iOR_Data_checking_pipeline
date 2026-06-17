@@ -94,6 +94,17 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         rename_column(df, old_column_name=GENE_NAME, new_column_name=RECEPTOR_NAME)
         rename_column(df, old_column_name=UNIPROT_ID, new_column_name=ACCESSION)
 
+        # Add empty Sequence_ref in df for Receptor and Co-Receptor groups
+        add_empty_column_after(
+            df, protein_groups, after_column=SEQUENCE, new_column=SEQUENCE_REF
+        )
+        add_empty_column_after(
+            df, protein_groups, after_column=ACCESSION, new_column=DATABASE
+        )
+        add_empty_column_after(
+            df, protein_groups, after_column=DATABASE, new_column=IDENTITY
+        )
+
         # ----------------------------------------------------------------------
         # RECEPTORS AND CO-RECEPTORS -------------------------------------------
         unique_accessions: list[str] = get_unique_accessions(
@@ -129,17 +140,6 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         ]
         if blast_only_accessions:
             fetch_ncbi_data(blast_only_accessions, blast_only_accessions)
-
-        # Add empty Sequence_ref in df for Receptor and Co-Receptor groups
-        add_empty_column_after(
-            df, protein_groups, after_column=SEQUENCE, new_column=SEQUENCE_REF
-        )
-        add_empty_column_after(
-            df, protein_groups, after_column=UNIPROT_ID, new_column=DATABASE
-        )
-        add_empty_column_after(
-            df, protein_groups, after_column=DATABASE, new_column=IDENTITY
-        )
 
         # Add Reference sequences, identity (%) and mutations vs UniProt reference
         enrich_with_reference_and_mutations(
