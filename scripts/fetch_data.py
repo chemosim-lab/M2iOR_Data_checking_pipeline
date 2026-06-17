@@ -370,6 +370,7 @@ def fetch_apa_references(unique_dois: list[str]) -> list[str]:
                     timeout=15,
                 )
                 if response.status_code == _HTTP_OK:
+                    response.encoding = "utf-8"
                     set_cache(doi, {"apa": response.text.strip()}, subdir="sources")
                     logger.info("  [%d/%d] %s ... ok", i, len(to_fetch), doi)
                 else:
