@@ -127,34 +127,9 @@ def process_receptors_name_columns(
     df: pd.DataFrame, groups: list[str], all_unique_uniprot_ids: list[str]
 ) -> None:
 
-    found_receptor_names_by_uid: dict[str, list[str]] = {}
-    for group in groups:
-        # Checking groups
-        if group not in df.columns.get_level_values(0):
-            msg = f"{group} missing in df"
-            raise ValueError(msg)
-
-        # Extract Uniprot ID and Receptor Name columns
-        uid_recname_columns = df[group][[UNIPROT_ID, RECEPTOR_NAME]]
-        uid_recname_columns[UNIPROT_ID] = (
-            uid_recname_columns[UNIPROT_ID].astype(str).str.strip()
-        )
-
-        # Store
-        for uid, group_df in uid_recname_columns.groupby(UNIPROT_ID):
-            names: list[str] = group_df[RECEPTOR_NAME].unique()
-            found_receptor_names_by_uid[str(uid)] = [
-                str(name).strip() for name in names if pd.notna(name)
-            ]
-
     receptor_name_by_uid: dict[str, str | None] = {}
     for uid in all_unique_uniprot_ids:
-        found_receptor_names: list[str] = found_receptor_names_by_uid.get(uid, [""])
-        normalized = _get_normalized_receptor_name(found_receptor_names)
-        if normalized:
-            receptor_name_by_uid[uid] = normalized
-        else:
-            receptor_name_by_uid[uid] = _get_receptor_name(uid)
+        receptor_name_by_uid[uid] = _get_receptor_name(uid)
 
     for group in groups:
         receptors_names = df[group][ACCESSION].map(receptor_name_by_uid)
