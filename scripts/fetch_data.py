@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import sys
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -219,9 +218,8 @@ def fetch_genbank_data(
         total = new_count + len(retryable) + len(no_hit) + len(cached_ok)
         answer = input(f"  Run/retry {total} BLAST lookup(s)? [y/N] ").strip().lower()
         if answer != "y":
-            count = new_count + len(retryable) + len(cached_ok)
-            logger.info("Aborted by user: %s BLAST lookup(s) required.", count)
-            sys.exit()
+            logger.info("Skipping BLAST lookups, continuing without new BLAST results.")
+            return {}
         _clear_blast_entries(retryable, no_hit, cached_ok)
 
     return resolve_missing_accessions_via_blast(df, protein_groups, blast_queries)
