@@ -157,7 +157,7 @@ def process_receptors_name_columns(
             receptor_name_by_uid[uid] = _get_receptor_name(uid)
 
     for group in groups:
-        receptors_names = df[group][UNIPROT_ID].map(receptor_name_by_uid)
+        receptors_names = df[group][ACCESSION].map(receptor_name_by_uid)
         df.loc[:, (group, RECEPTOR_NAME)] = receptors_names
 
     enrich_species_column(df, groups, all_unique_uniprot_ids)
@@ -180,7 +180,7 @@ def enrich_species_column(
             continue
 
     for group in groups:
-        uid_col = df[group][UNIPROT_ID].astype(str).str.strip()
+        uid_col = df[group][ACCESSION].astype(str).str.strip()
         updated = uid_col.map(species_by_uid)
         mask = updated.notna()
         if mask.any():
@@ -326,7 +326,7 @@ def enrich_with_reference_and_mutations(
         database_list: list[str | None] = []
 
         for idx, row in df[group].iterrows():
-            uid = row[UNIPROT_ID]
+            uid = row[ACCESSION]
             uid_str = str(uid).strip() if pd.notna(uid) else None
 
             if uid_str and uid_str in blast_refs:
