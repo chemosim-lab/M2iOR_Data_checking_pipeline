@@ -134,13 +134,13 @@ def process_receptors_name_columns(
             raise ValueError(msg)
 
         # Extract Uniprot ID and Receptor Name columns
-        uid_recname_columns = df[group][[UNIPROT_ID, RECEPTOR_NAME]]
-        uid_recname_columns[UNIPROT_ID] = (
-            uid_recname_columns[UNIPROT_ID].astype(str).str.strip()
+        uid_recname_columns = df[group][[ACCESSION, RECEPTOR_NAME]]
+        uid_recname_columns[ACCESSION] = (
+            uid_recname_columns[ACCESSION].astype(str).str.strip()
         )
 
         # Store
-        for uid, group_df in uid_recname_columns.groupby(UNIPROT_ID):
+        for uid, group_df in uid_recname_columns.groupby(ACCESSION):
             names: list[str] = group_df[RECEPTOR_NAME].unique()
             found_receptor_names_by_uid[str(uid)] = [
                 str(name).strip() for name in names if pd.notna(name)
@@ -175,7 +175,7 @@ def enrich_species_column(
             name: str = data["organism"]["scientificName"]
             if name:
                 species_by_uid[uid] = name
-        except (KeyError, TypeError):
+        except KeyError, TypeError:
             continue
 
     for group in groups:
@@ -239,7 +239,7 @@ def resolve_missing_accessions_via_blast(
     queries: list[tuple[str, str]],
 ) -> dict[str, str]:
     """
-    Run BLAST once per unique (sequence, species) pair, then fill the UNIPROT_ID
+    Run BLAST once per unique (sequence, species) pair, then fill the ACCESSION
     cells with the resulting GenBank accessions.  The DataFrame fill is vectorized
     — no per-row iteration.
 
