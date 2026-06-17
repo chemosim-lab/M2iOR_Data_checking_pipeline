@@ -102,27 +102,15 @@ def fetch_uniprot_data(unique_accessions: list[str]) -> list[str]:
 _HTTP_OK = 200
 
 
-def _parse_tag_from_cds_header(header: str, tag: str) -> str | None:
-    """Extract a bracketed tag value from a fasta_cds_aa header, e.g. [gene=Or54]."""
-    prefix = f"{tag}="
-    for part in header.split("["):
-        if part.startswith(prefix):
-            return part.split("=", 1)[1].rstrip("]").strip()
-    return None
-
-
-def _parse_gene_name_from_cds_header(header: str) -> str | None:
-    return _parse_tag_from_cds_header(header, "gene")
-
 
 def _fetch_ncbi_protein(accession: str) -> dict[str, Any] | None:
     try:
         response = requests.get(
             _NCBI_EFETCH_URL,
             params={
-                "db": "nuccore",
+                "db": "protein",
                 "id": accession,
-                "rettype": "fasta_cds_aa",
+                "rettype": "fasta",
                 "retmode": "text",
             },
             timeout=15,
@@ -132,15 +120,15 @@ def _fetch_ncbi_protein(accession: str) -> dict[str, Any] | None:
         text = response.text.strip()
         if not text.startswith(">"):
             return None
-        # Take only the first CDS entry (there may be several in the record)
-        first_entry = text.split("\n>")[0]
-        lines = first_entry.splitlines()
+        lines = text.splitlines()
         header = lines[0][1:]  # remove leading ">"
         sequence = "".join(lines[1:])
         if not sequence:
             return None
-        gene_name = _parse_gene_name_from_cds_header(header) or accession
-        protein_desc = _parse_tag_from_cds_header(header, "protein")
+        # Protein FASTA header: ">AAT71306.1 <description> [organism]"
+        parts = header.split(" ", 1)
+        gene_name = accession
+        protein_desc = parts[1].strip() if len(parts) > 1 else None
     except requests.RequestException as e:
         logger.info("  [NCBI] Failed to fetch %s: %s", accession, e)
         return None
