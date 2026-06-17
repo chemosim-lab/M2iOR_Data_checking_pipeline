@@ -1,44 +1,48 @@
 # scripts/fetch_blast.py
 
+import hashlib
 import json
-import re
 import threading
 import time
-from io import StringIO
 from pathlib import Path
+from typing import Any
 
-import requests
-from Bio import Entrez, SeqIO
-from Bio.Blast import NCBIXML
+from Bio import Blast, Entrez, SeqIO
 
 from scripts.tools.get_common_name import get_taxon_id
 
 # Required by NCBI for all Entrez/BLAST requests.
 _ENTREZ_EMAIL = "andre.lanrezac@univ-cotedazur.fr"
 
-_BLAST_URL = "https://blast.ncbi.nlm.nih.gov/blast/Blast.cgi"
 _BLAST_CACHE_FILE = Path("cache/receptors/blast_cache.json")
-_POLL_INTERVAL = 10  # seconds between status polls
-_BLAST_TIMEOUT = 600  # give up after 10 minutes
+_BLAST_XML_DIR = Path("cache/receptors/blast_xml")
 _ENTREZ_DELAY = 0.4  # NCBI policy: max 3 req/s without API key
 _cache_lock = threading.Lock()
+
+Blast.email = _ENTREZ_EMAIL
 
 
 def _blast_key(sequence: str, species: str) -> str:
     return f"{species.strip().lower()}|{sequence.strip()}"
 
 
-def _load_blast_cache() -> dict[str, dict[str, str]]:
+def _load_blast_cache() -> dict[str, dict[str, Any]]:
     if _BLAST_CACHE_FILE.exists():
         with _BLAST_CACHE_FILE.open(encoding="utf-8") as f:
             return json.load(f)
     return {}
 
 
-def _save_blast_cache(cache: dict[str, dict]) -> None:
+def _save_blast_cache(cache: dict[str, dict[str, Any]]) -> None:
     _BLAST_CACHE_FILE.parent.mkdir(parents=True, exist_ok=True)
     with _BLAST_CACHE_FILE.open("w", encoding="utf-8") as f:
         json.dump(cache, f, indent=2)
+
+
+def _blast_xml_path(key: str) -> Path:
+    _BLAST_XML_DIR.mkdir(parents=True, exist_ok=True)
+    filename = hashlib.sha256(key.encode()).hexdigest()[:16] + ".xml"
+    return _BLAST_XML_DIR / filename
 
 
 def _fetch_full_sequence(accession: str) -> str | None:
@@ -56,131 +60,71 @@ def _fetch_full_sequence(accession: str) -> str | None:
         return None
 
 
-def _submit_blast(sequence: str, species_name: str) -> str | None:
-    """Submit a BLASTP job to NCBI. Returns the RID on success."""
-    taxon_id = get_taxon_id(species_name)
-    print(f"txid{taxon_id}")
-    data = {
-        "CMD": "Put",
-        "PROGRAM": "blastp",
-        "DATABASE": "nr_cluster_seq",
-        "QUERY": sequence,
-        "MATRIX": "BLOSUM62",
-        "ENTREZ_QUERY": f"txid{taxon_id} [ORGN]",
-        "EXPECT": "0.05",
-        "FORMAT_TYPE": "XML",
-        "HITLIST_SIZE": "1",
-        "FILTER": "F",
-    }
+def _run_blast_query(
+    sequence: str, species: str
+) -> tuple[str | None, Path | None, str | None]:
+    """
+    Run a BLASTP search via Bio.Blast.qblast (submit + poll).
+    Returns (accession, xml_path, None) on success, (None, xml_path, error) on failure.
+    xml_path is None only when the query never completed.
+    """
+    taxon_id = get_taxon_id(species)
+    msg = f"    [BLAST] Submitting for species={species!r} (txid{taxon_id}) ..."
+    print(msg, flush=True)  # noqa: T201
     try:
-        response = requests.post(_BLAST_URL, data=data, timeout=30)
-        response.raise_for_status()
-    except requests.RequestException as e:
-        print(f"    [BLAST] Submit failed: {e}")  # noqa: T201
-        return None
+        result_stream = Blast.qblast(
+            "blastp",
+            "nr_cluster_seq",
+            sequence,
+            entrez_query=f"txid{taxon_id}[ORGN]",
+            expect=0.05,
+            hitlist_size=1,
+            matrix_name="BLOSUM62",
+            filter="F",
+        )
+    except Exception as e:  # noqa: BLE001
+        print(f"    [BLAST] Query failed: {e}")  # noqa: T201
+        return None, None, "submission failed"
 
-    match = re.search(r"RID = (\w+)", response.text)
-    if not match:
-        print("    [BLAST] Could not find RID in response.")  # noqa: T201
-        return None
-    return match.group(1)
-
-
-def _poll_blast(rid: str) -> str | None:
-    """Poll NCBI until the job is READY. Returns the raw XML or None on failure."""
-    print(f"    [BLAST] RID={rid}, polling every {_POLL_INTERVAL}s ...", flush=True)  # noqa: T201
-    elapsed = 0
-    while elapsed < _BLAST_TIMEOUT:
-        time.sleep(_POLL_INTERVAL)
-        elapsed += _POLL_INTERVAL
-
-        try:
-            resp = requests.get(
-                _BLAST_URL,
-                params={"CMD": "Get", "RID": rid, "FORMAT_OBJECT": "SearchInfo"},
-                timeout=30,
-            )
-            resp.raise_for_status()
-        except requests.RequestException as e:
-            print(f"    [BLAST] Poll error: {e}")  # noqa: T201
-            continue
-
-        if "Status=WAITING" in resp.text:
-            print(f"    [BLAST] Waiting... ({elapsed}s elapsed)", flush=True)  # noqa: T201
-            continue
-        if "Status=FAILED" in resp.text:
-            print("    [BLAST] Job failed on NCBI side.")  # noqa: T201
-            return None
-        if "Status=UNKNOWN" in resp.text:
-            print("    [BLAST] RID expired or unknown.")  # noqa: T201
-            return None
-        if "Status=READY" in resp.text:
-            result_params = {
-                "CMD": "Get",
-                "RID": rid,
-                "FORMAT_TYPE": "XML",
-                "HITLIST_SIZE": "1",
-            }
-            try:
-                result = requests.get(_BLAST_URL, params=result_params, timeout=60)
-                result.raise_for_status()
-            except requests.RequestException as e:
-                print(f"    [BLAST] Failed to retrieve results: {e}")  # noqa: T201
-                return None
-            else:
-                return result.text
-
-    print(f"    [BLAST] Timeout after {_BLAST_TIMEOUT}s.")  # noqa: T201
-    return None
-
-
-def _run_blast_query(sequence: str, species: str) -> tuple[str | None, str | None]:
-    """
-    Run the full BLAST pipeline.
-    Returns (accession, None) on success, (None, error_reason) on failure.
-    """
-    rid = _submit_blast(sequence, species)
-    if rid is None:
-        return None, "submission failed"
-
-    xml_text = _poll_blast(rid)
-    if xml_text is None:
-        return None, "timeout or NCBI error"
+    xml_path = _blast_xml_path(_blast_key(sequence, species))
+    with xml_path.open("wb") as out_stream:
+        out_stream.write(result_stream.read())
+    result_stream.close()
 
     try:
-        blast_records = list(NCBIXML.parse(StringIO(xml_text)))
+        blast_record = Blast.read(xml_path)
     except ValueError as e:
-        return None, f"XML parse error: {e}"
+        return None, xml_path, f"XML parse error: {e}"
 
-    if not blast_records or not blast_records[0].alignments:
+    if not blast_record:
         print(f"    [BLAST] No hit found for species={species!r}")  # noqa: T201
-        return None, "no hit found"
+        return None, xml_path, "no hit found"
 
-    accession = blast_records[0].alignments[0].accession
+    accession = blast_record[0].target.id
     print(f"    [BLAST] Best hit: {accession}")  # noqa: T201
-    return accession, None
+    return accession, xml_path, None
 
 
 def count_uncached_blast_queries(queries: list[tuple[str, str]]) -> int:
     """Return how many (sequence, species) pairs have never been queried."""
     cache = _load_blast_cache()
-    return sum(1 for seq, species in queries if _blast_key(seq, species) not in cache)
+    return sum(1 for seq, sp in queries if _blast_key(seq, sp) not in cache)
 
 
 def get_failed_blast_queries(
     queries: list[tuple[str, str]],
 ) -> list[tuple[str, str, str]]:
     """
-    Return entries that were previously queried but produced no result.
+    Return queries that were previously submitted but produced no result.
     Each item is (sequence, species, error_reason).
     """
     cache = _load_blast_cache()
     failed: list[tuple[str, str, str]] = []
-    for seq, species in queries:
-        entry: dict[str, str] | None = cache.get(_blast_key(seq, species))
+    for seq, sp in queries:
+        entry: dict[str, Any] | None = cache.get(_blast_key(seq, sp))
         if entry is not None and not entry.get("accession"):
-            error = entry.get("error", "unknown error")
-            failed.append((seq, species, error))
+            error = str(entry.get("error", "unknown error"))
+            failed.append((seq, sp, error))
     return failed
 
 
@@ -190,9 +134,9 @@ def get_successful_blast_queries(
     """Return (sequence, species) pairs that have a successful cache entry."""
     cache = _load_blast_cache()
     return [
-        (seq, species)
-        for seq, species in queries
-        if (entry := cache.get(_blast_key(seq, species))) is not None
+        (seq, sp)
+        for seq, sp in queries
+        if (entry := cache.get(_blast_key(seq, sp))) is not None
         and entry.get("accession")
     ]
 
@@ -201,8 +145,8 @@ def clear_blast_cache_entries(queries: list[tuple[str, str]]) -> None:
     """Remove cache entries for the given queries so they can be re-run."""
     cache = _load_blast_cache()
     changed = False
-    for seq, species in queries:
-        key = _blast_key(seq, species)
+    for seq, sp in queries:
+        key = _blast_key(seq, sp)
         if key in cache:
             del cache[key]
             changed = True
@@ -214,9 +158,8 @@ def fetch_blast_reference(sequence: str, species: str) -> tuple[str, str] | None
     """
     Resolve a (sequence, species) pair to a (genbank_accession, sequence_ref).
 
-    Results are stored in a single file — cache/blast_cache.json — indexed by
-    "{species}|{sequence}".  Negative results (no hit) are also cached so that
-    repeated runs never re-query NCBI for the same pair.
+    Results are stored in cache/blast_cache.json indexed by "{species}|{sequence}".
+    Negative results (no hit) are also cached so repeated runs never re-query NCBI.
     """
     key = _blast_key(sequence, species)
 
@@ -227,15 +170,19 @@ def fetch_blast_reference(sequence: str, species: str) -> tuple[str, str] | None
     if entry is not None:
         acc = entry.get("accession")
         seq_ref = entry.get("sequence_ref")
-        return (acc, seq_ref) if (acc and seq_ref) else None  # None = negative cache
+        return (acc, seq_ref) if (acc and seq_ref) else None
 
-    print(f"    [BLAST] Submitting for species={species!r} ...", flush=True)  # noqa: T201
-    accession, error = _run_blast_query(sequence, species)
+    accession, xml_path, error = _run_blast_query(sequence, species)
 
     if accession is None:
         with _cache_lock:
             cache = _load_blast_cache()
-            cache[key] = {"accession": None, "sequence_ref": None, "error": error}
+            cache[key] = {
+                "accession": None,
+                "sequence_ref": None,
+                "xml_path": str(xml_path) if xml_path else None,
+                "error": error,
+            }
             _save_blast_cache(cache)
         return None
 
@@ -247,6 +194,11 @@ def fetch_blast_reference(sequence: str, species: str) -> tuple[str, str] | None
 
     with _cache_lock:
         cache = _load_blast_cache()
-        cache[key] = {"accession": accession, "sequence_ref": ref_sequence}
+        cache[key] = {
+            "accession": accession,
+            "sequence_ref": ref_sequence,
+            "xml_path": str(xml_path),
+            "error": None,
+        }
         _save_blast_cache(cache)
     return accession, ref_sequence

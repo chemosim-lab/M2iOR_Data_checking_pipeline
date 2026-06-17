@@ -1,5 +1,4 @@
 # pipeline/scripts/process_receptors.py
-import logging
 import re
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from re import Match
@@ -151,7 +150,7 @@ def enrich_species_column(
             name: str = data["organism"]["scientificName"]
             if name:
                 species_by_uid[uid] = name
-        except KeyError, TypeError:
+        except (KeyError, TypeError):
             continue
 
     for group in groups:
