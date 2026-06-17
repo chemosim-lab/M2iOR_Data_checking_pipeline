@@ -37,7 +37,10 @@ def _lower_element(x: Any) -> Any:
 
 
 def _strip_series(s: pd.Series[Any]) -> pd.Series[Any]:
-    return s.map(_strip_element) if pd.api.types.is_string_dtype(s) else s
+    if not pd.api.types.is_string_dtype(s):
+        return s
+    result = s.map(_strip_element)
+    return result.astype(s.dtype)
 
 
 _LOWERCASE_COLUMNS: list[tuple[str, str]] = [
