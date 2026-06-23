@@ -352,8 +352,8 @@ def enrich_with_reference_and_mutations(
                 mutations_list.append(None)
             else:
                 seq_clean = "".join(str(seq).split())
-                mut_str, _pid_aln, pid_short = align_and_annotate(seq_clean, seq_ref)
-                identities.append(pid_short)
+                mut_str, pid_aln, _pid_short = align_and_annotate(seq_clean, seq_ref)
+                identities.append(pid_aln)
                 mutations_list.append(mut_str)
 
         df.loc[:, (group, SEQUENCE_REF)] = seq_refs

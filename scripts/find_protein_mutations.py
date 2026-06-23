@@ -73,7 +73,7 @@ def _emit_insertion(seq_ref: str, ref_pos: int, ins_aas: list[str]) -> str:
 
 def _make_aligner() -> Align.PairwiseAligner:
     aligner = Align.PairwiseAligner()
-    aligner.mode = "global"  # Needleman-Wunsch
+    aligner.mode = "local"  # Smith-Waterman
     aligner.substitution_matrix = Align.substitution_matrices.load(SUBSTITUTION_MATRIX)
     aligner.open_gap_score = -10
     aligner.extend_gap_score = -0.5
