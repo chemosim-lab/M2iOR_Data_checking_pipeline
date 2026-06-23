@@ -1,6 +1,74 @@
+import re
+
 from Bio import Align
 
 SUBSTITUTION_MATRIX = "BLOSUM62"
+
+_DEL_RE = re.compile(r"^([A-Z])(\d+)del$")
+_SUB_RE = re.compile(r"^([A-Z])(\d+)([A-Z])$")
+# HGVS: X10_Y11insABC  — fallback for terminal insertions: ins0ABC
+_INS_RE = re.compile(r"^(?:[A-Z]\d+_[A-Z]\d+ins[A-Z]+|ins\d+[A-Z]+)$")
+
+
+def compress_deletions(mutations_str: str) -> str:
+    """
+    Compress runs of consecutive single-residue deletions into HGVS range notation.
+
+    "F300del;Q301del;V302del" -> "F300_V302del"
+
+    Token separator is `;`. The `_` character is reserved for deletion ranges.
+    Substitutions and insertions pass through unchanged and break any ongoing run.
+    Any token that is neither a deletion, substitution, nor insertion raises ValueError.
+    """
+    if not mutations_str:
+        return mutations_str
+
+    tokens = mutations_str.split(";")
+    output: list[str] = []
+    run: list[tuple[str, int]] = []
+
+    def _flush() -> None:
+        if not run:
+            return
+        if len(run) == 1:
+            aa, pos = run[0]
+            output.append(f"{aa}{pos}del")
+        else:
+            aa0, pos0 = run[0]
+            aa1, pos1 = run[-1]
+            output.append(f"{aa0}{pos0}_{aa1}{pos1}del")
+        run.clear()
+
+    for token in tokens:
+        del_m = _DEL_RE.match(token)
+        if del_m:
+            aa, pos = del_m.group(1), int(del_m.group(2))
+            if run and pos != run[-1][1] + 1:
+                _flush()
+            run.append((aa, pos))
+            continue
+
+        if _SUB_RE.match(token) or _INS_RE.match(token):
+            _flush()
+            output.append(token)
+            continue
+
+        msg = f"Unrecognized mutation token: {token!r}"
+        raise ValueError(msg)
+
+    _flush()
+    return ";".join(output)
+
+
+def _emit_insertion(seq_ref: str, ref_pos: int, ins_aas: list[str]) -> str:
+    """Build a HGVS protein insertion token for consecutive inserted residues."""
+    inserted = "".join(ins_aas)
+    # Terminal insertions have no flanking pair — use simplified fallback notation
+    if ref_pos == 0 or ref_pos >= len(seq_ref):
+        return f"ins{ref_pos}{inserted}"
+    aa_left = seq_ref[ref_pos - 1]
+    aa_right = seq_ref[ref_pos]
+    return f"{aa_left}{ref_pos}_{aa_right}{ref_pos + 1}ins{inserted}"
 
 
 def _make_aligner() -> Align.PairwiseAligner:
@@ -24,16 +92,23 @@ def find_mutations(seq1: str, seq2: str, seq1_name="Ref", seq2_name="Query") -> 
 
     mutations: list[str] = []
     ref_pos = 0
+    ins_buffer: list[str] = []
 
     for ref_aa, query_aa in zip(*best):
         if ref_aa != "-":
+            if ins_buffer:
+                mutations.append(_emit_insertion(seq1, ref_pos, ins_buffer))
+                ins_buffer.clear()
             ref_pos += 1
-        if ref_aa == "-":
-            mutations.append(f"ins{ref_pos}{query_aa}")
-        elif query_aa == "-":
-            mutations.append(f"{ref_aa}{ref_pos}del")
-        elif ref_aa != query_aa:
-            mutations.append(f"{ref_aa}{ref_pos}{query_aa}")
+            if query_aa == "-":
+                mutations.append(f"{ref_aa}{ref_pos}del")
+            elif ref_aa != query_aa:
+                mutations.append(f"{ref_aa}{ref_pos}{query_aa}")
+        else:
+            ins_buffer.append(query_aa)
+
+    if ins_buffer:
+        mutations.append(_emit_insertion(seq1, ref_pos, ins_buffer))
 
     return mutations
 
@@ -43,7 +118,7 @@ def align_and_annotate(seq: str, seq_ref: str) -> tuple[str, float, float]:
     Align seq (query, from the study) against seq_ref (reference, from UniProt).
 
     Returns:
-        mutations_str: mutations joined by "_", empty string if sequences are identical
+        mutations_str: mutations joined by ";", empty string if sequences are identical
         pid_aln: identity over alignment length (gaps included), rounded to 2 decimals
         pid_short: identity over the shorter sequence length, rounded to 2 decimals
     """
@@ -53,15 +128,23 @@ def align_and_annotate(seq: str, seq_ref: str) -> tuple[str, float, float]:
 
     mutations: list[str] = []
     ref_pos = 0
+    ins_buffer: list[str] = []
+
     for ref_aa, query_aa in zip(a, b, strict=True):
         if ref_aa != "-":
+            if ins_buffer:
+                mutations.append(_emit_insertion(seq_ref, ref_pos, ins_buffer))
+                ins_buffer.clear()
             ref_pos += 1
-        if ref_aa == "-":
-            mutations.append(f"ins{ref_pos}{query_aa}")
-        elif query_aa == "-":
-            mutations.append(f"{ref_aa}{ref_pos}del")
-        elif ref_aa != query_aa:
-            mutations.append(f"{ref_aa}{ref_pos}{query_aa}")
+            if query_aa == "-":
+                mutations.append(f"{ref_aa}{ref_pos}del")
+            elif ref_aa != query_aa:
+                mutations.append(f"{ref_aa}{ref_pos}{query_aa}")
+        else:
+            ins_buffer.append(query_aa)
+
+    if ins_buffer:
+        mutations.append(_emit_insertion(seq_ref, ref_pos, ins_buffer))
 
     matches = sum(x == y and x != "-" for x, y in zip(a, b, strict=True))
     aln_len = len(a)
@@ -69,7 +152,7 @@ def align_and_annotate(seq: str, seq_ref: str) -> tuple[str, float, float]:
     pid_aln = round(100 * matches / aln_len, 2) if aln_len > 0 else 0.0
     pid_short = round(100 * matches / shorter, 2) if shorter > 0 else 0.0
 
-    return "_".join(mutations), pid_aln, pid_short
+    return compress_deletions(";".join(mutations)), pid_aln, pid_short
 
 
 if __name__ == "__main__":

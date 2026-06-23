@@ -133,3 +133,11 @@ extend-unsafe-fixes = [
 ]
 
 [tool.ruff.lint.isort]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
