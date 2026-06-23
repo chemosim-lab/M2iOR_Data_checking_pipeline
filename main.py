@@ -251,7 +251,7 @@ if __name__ == "__main__":
     do_retry = cast(bool, args.retry)
     force_arg = cast(str | None, args.force)
 
-    input_path = Path("input")
+    input_path = Path("/nfs/balthazar/andre/m2ior_input/")
 
     print("Loading processing registry...")
     registry = StudyProcessingRegistry.load(REGISTRY_FILE)
