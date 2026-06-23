@@ -67,7 +67,10 @@ def _build_column_maps(
         props: list[dict] = compounds[0].get("props", [])
         synonyms: list[str] = data.get("synonyms", [])
 
-        if name := data.get("record_title"):
+        ze_name = next(
+            (s for s in synonyms if re.search(r"\(Z/E\)", s, re.IGNORECASE)), None
+        )
+        if name := ze_name or data.get("record_title"):
             name_map[cid] = name
         if key := _extract_prop(props, "InChIKey"):
             inchikey_map[cid] = key
