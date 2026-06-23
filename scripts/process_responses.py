@@ -39,13 +39,25 @@ def _validate_float_column(df: pd.DataFrame, col_name: str) -> None:
 
 
 def validate_value_column(df: pd.DataFrame) -> None:
-    """Raise ValueError if any non-null value in Value is not a float."""
-    _validate_float_column(df, VALUE)
+    """Raise ValueError if any non-null value in Value is not a float or a string."""
+    col = df[RESPONSE][VALUE].dropna()
+    numeric = pd.to_numeric(col, errors="coerce")
+    invalid = col[numeric.isna() & ~col.astype(str).str.strip().astype(bool)]
+    if not invalid.empty:
+        rows = invalid.index.tolist()
+        msg = f"Column '{VALUE}' contains invalid value(s) at row(s): {rows}"
+        raise ValueError(msg)
 
 
 def validate_concentration_column(df: pd.DataFrame) -> None:
-    """Raise ValueError if any non-null value in Concentration is not a float."""
-    _validate_float_column(df, CONCENTRATION)
+    """Raise ValueError if any non-null value in Concentration is not a float or a string."""
+    col = df[RESPONSE][CONCENTRATION].dropna()
+    numeric = pd.to_numeric(col, errors="coerce")
+    invalid = col[numeric.isna() & ~col.astype(str).str.strip().astype(bool)]
+    if not invalid.empty:
+        rows = invalid.index.tolist()
+        msg = f"Column '{CONCENTRATION}' contains invalid value(s) at row(s): {rows}"
+        raise ValueError(msg)
 
 
 def validate_parameter_column(df: pd.DataFrame) -> None:
