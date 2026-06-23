@@ -11,6 +11,8 @@ from Bio import Blast, Entrez, SeqIO
 
 from scripts.tools.get_common_name import get_taxon_id
 
+SUBSTITUTION_MATRIX = "BLOSUM62"
+
 # Required by NCBI for all Entrez/BLAST requests.
 _ENTREZ_EMAIL = "andre.lanrezac@univ-cotedazur.fr"
 
@@ -74,12 +76,12 @@ def _run_blast_query(
     try:
         result_stream = Blast.qblast(
             "blastp",
-            "nr_cluster_seq",
+            "nr",
             sequence,
             entrez_query=f"txid{taxon_id}[ORGN]",
             expect=0.05,
             hitlist_size=1,
-            matrix_name="BLOSUM62",
+            matrix_name=SUBSTITUTION_MATRIX,
             filter="F",
         )
     except Exception as e:  # noqa: BLE001

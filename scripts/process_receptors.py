@@ -225,7 +225,7 @@ def collect_blast_queries(
         uid_col = sub[ACCESSION].astype(str).str.strip()
         missing = sub[ACCESSION].isna() | (uid_col == "") | uid_col.isin(fallback_set)
         candidates = sub.loc[missing, [SEQUENCE, SPECIES]].dropna()
-        seq = candidates[SEQUENCE].astype(str).str.strip()
+        seq = candidates[SEQUENCE].astype(str).str.replace(r"\s+", "", regex=True)
         species = candidates[SPECIES].astype(str).str.strip()
         valid = (seq != "") & (species != "")
         queries.update(zip(seq[valid], species[valid], strict=False))
@@ -351,8 +351,9 @@ def enrich_with_reference_and_mutations(
                 identities.append(None)
                 mutations_list.append(None)
             else:
-                mut_str, identity = align_and_annotate(str(seq).strip(), seq_ref)
-                identities.append(identity)
+                seq_clean = "".join(str(seq).split())
+                mut_str, _pid_aln, pid_short = align_and_annotate(seq_clean, seq_ref)
+                identities.append(pid_short)
                 mutations_list.append(mut_str)
 
         df.loc[:, (group, SEQUENCE_REF)] = seq_refs
