@@ -284,6 +284,54 @@ def resolve_missing_accessions_via_blast(
     return blast_refs
 
 
+def _resolve_seq_ref(
+    uid: Any,
+    blast_refs: dict[str, str],
+    ncbi_uid_set: set[str],
+    uniprot_cache: dict[str, str | None],
+) -> tuple[str | None, str]:
+    uid_str = str(uid).strip() if pd.notna(uid) else None
+    if uid_str and uid_str in blast_refs:
+        seq_ref, database = blast_refs[uid_str], "genbank"
+    elif uid_str and uid_str in ncbi_uid_set:
+        seq_ref, database = uniprot_cache.get(uid_str), "genbank"
+    elif uid_str:
+        seq_ref, database = uniprot_cache.get(uid_str), "uniprot"
+    else:
+        seq_ref, database = None, "undefined"
+    if seq_ref is not None:
+        seq_ref = "".join(seq_ref.split())
+    return seq_ref, database
+
+
+def _normalize_sequence(
+    df: pd.DataFrame,
+    idx: Any,
+    group: str,
+    seq: Any,
+    seq_ref: str | None,
+) -> Any:
+    seq_empty = pd.isna(seq) or not str(seq).strip()
+    if seq_ref and seq_empty:
+        df.loc[idx, (group, SEQUENCE)] = seq_ref
+        return seq_ref
+    if not seq_empty:
+        cleaned = "".join(str(seq).split())
+        df.loc[idx, (group, SEQUENCE)] = cleaned
+        return cleaned
+    return seq
+
+
+def _compute_mutations(
+    seq: Any,
+    seq_ref: str | None,
+) -> tuple[str | None, float | None]:
+    if seq_ref is None or pd.isna(seq) or not str(seq).strip():
+        return None, None
+    mut_str, pid_aln, _pid_short = align_and_annotate(seq, seq_ref)
+    return mut_str, pid_aln
+
+
 def enrich_with_reference_and_mutations(
     df: pd.DataFrame,
     groups: list[str],
@@ -325,36 +373,16 @@ def enrich_with_reference_and_mutations(
         database_list: list[str | None] = []
 
         for idx, row in df[group].iterrows():
-            uid = row[ACCESSION]
-            uid_str = str(uid).strip() if pd.notna(uid) else None
-
-            if uid_str and uid_str in blast_refs:
-                seq_ref, database = blast_refs[uid_str], "genbank"
-            elif uid_str and uid_str in ncbi_uid_set:
-                seq_ref, database = uniprot_cache.get(uid_str), "genbank"
-            elif uid_str:
-                seq_ref, database = uniprot_cache.get(uid_str), "uniprot"
-            else:
-                seq_ref, database = None, "undefined"
-
+            seq_ref, database = _resolve_seq_ref(
+                row[ACCESSION], blast_refs, ncbi_uid_set, uniprot_cache
+            )
             seq_refs.append(seq_ref)
             database_list.append(database)
 
-            seq = row[SEQUENCE]
-            # Fill empty Sequence with the reference sequence fetched from UniProt/NCBI
-            seq_empty = pd.isna(seq) or not str(seq).strip()
-            if seq_ref and seq_empty:
-                df.loc[idx, (group, SEQUENCE)] = seq_ref
-                seq = seq_ref
-
-            if seq_ref is None or pd.isna(seq) or not str(seq).strip():
-                identities.append(None)
-                mutations_list.append(None)
-            else:
-                seq_clean = "".join(str(seq).split())
-                mut_str, pid_aln, _pid_short = align_and_annotate(seq_clean, seq_ref)
-                identities.append(pid_aln)
-                mutations_list.append(mut_str)
+            seq = _normalize_sequence(df, idx, group, row[SEQUENCE], seq_ref)
+            mut_str, pid_aln = _compute_mutations(seq, seq_ref)
+            identities.append(pid_aln)
+            mutations_list.append(mut_str)
 
         df.loc[:, (group, SEQUENCE_REF)] = seq_refs
         df.loc[:, (group, IDENTITY)] = identities
