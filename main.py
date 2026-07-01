@@ -43,8 +43,13 @@ from scripts.process_receptors import (
 )
 from scripts.process_responses import (
     validate_concentration_column,
+    validate_concentration_unit_column,
+    validate_experimental_technique_column,
     validate_parameter_column,
     validate_responsive_column,
+    validate_stimulation_duration_unit_column,
+    validate_stimulation_flux_unit_column,
+    validate_unit_column,
     validate_value_column,
 )
 from scripts.process_sources import (
@@ -167,10 +172,15 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         validate_responsive_column(df)
         validate_parameter_column(df)
         validate_value_column(df)
+        validate_unit_column(df)
         validate_concentration_column(df)
+        validate_concentration_unit_column(df)
 
         # ----------------------------------------------------------------------
         # ASSAY ----------------------------------------------------------------
+        validate_stimulation_flux_unit_column(df)
+        validate_stimulation_duration_unit_column(df)
+        validate_experimental_technique_column(df)
 
         # ----------------------------------------------------------------------
         # SOURCE ---------------------------------------------------------------
