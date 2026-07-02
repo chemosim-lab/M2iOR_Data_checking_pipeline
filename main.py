@@ -30,8 +30,8 @@ from scripts.fetch_data import (
 )
 from scripts.normalize_dataframe import normalize_df, rename_column
 from scripts.process_molecules import (
-    enrich_molecule_columns,
     get_unique_cids,
+    process_molecules,
     validate_cid_or_cas,
 )
 from scripts.process_receptors import (
@@ -64,7 +64,7 @@ from scripts.registry import ProcessingStatus, StudyFileTracker, StudyProcessing
 if TYPE_CHECKING:
     from pandas import DataFrame
 
-LARAVEL_DATA_PATH = Path(
+M2IOR_DATA_INPUT_PATH = Path(
     "/home/andre/Dev/M2iOR_migration/M2iOR/M2iOR_web_public-main/resources/data"
 )
 REGISTRY_FILE = Path("./registry.json")
@@ -74,7 +74,7 @@ logger = colorlog.getLogger(__name__)
 
 def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> None:
     study_id: str = excel_path.stem  # e.g. "001_Kreher_Neuron_2005"
-    output_path = LARAVEL_DATA_PATH
+    output_path = M2IOR_DATA_INPUT_PATH
     output_path.mkdir(parents=True, exist_ok=True)
 
     # Register if not already known; ignore the error if already registered
@@ -165,7 +165,7 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         if new_cids:
             fetch_pubchem_data(new_cids)
 
-        enrich_molecule_columns(df)
+        process_molecules(df, M2IOR_DATA_INPUT_PATH / "cid_synonyms")
 
         # ----------------------------------------------------------------------
         # RESPONSES ------------------------------------------------------------

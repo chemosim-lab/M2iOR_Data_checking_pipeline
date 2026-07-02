@@ -1,5 +1,6 @@
 # pipeline/scripts/process_molecules.py
 import re
+from pathlib import Path
 
 import pandas as pd
 
@@ -8,7 +9,6 @@ from scripts.columns import CAS, CID, INCHIKEY, MOLECULE, MOLECULE_NAME, SMILES
 
 _CAS_RE = re.compile(r"^\d{2,7}-\d{2}-\d$")
 _CID_NUM_RE = re.compile(r"^\d+(?:\.\d+)?$")
-
 
 
 def validate_cid_or_cas(df: pd.DataFrame) -> None:
@@ -31,9 +31,7 @@ def get_unique_cids(df: pd.DataFrame) -> list[int]:
         raise ValueError(f"Group '{MOLECULE}' not in the DataFrame.")
     col = df[MOLECULE][CID].dropna().astype(str)
     expanded = (
-        col.str.replace(r"\band\b", " ", regex=True, case=False)
-        .str.split()
-        .explode()
+        col.str.replace(r"\band\b", " ", regex=True, case=False).str.split().explode()
     )
     valid = expanded[expanded.str.match(r"^\d+(?:\.\d+)?$")]
     return sorted({int(float(v)) for v in valid} - {0})
@@ -48,14 +46,17 @@ def _extract_prop(props: list[dict], label: str, name: str | None = None) -> str
     return None
 
 
-def _build_column_maps(
+def _parse_cid_cache(
     unique_cids: list[int],
-) -> tuple[dict[int, str], dict[int, str], dict[int, str], dict[int, str]]:
-    """Read cache once per unique CID and return four cid→value dicts."""
+) -> tuple[
+    dict[int, str], dict[int, str], dict[int, str], dict[int, str], dict[int, list[str]]
+]:
+    """Read cache once per unique CID and return five cid→value dicts."""
     name_map: dict[int, str] = {}
     cas_map: dict[int, str] = {}
     inchikey_map: dict[int, str] = {}
     smiles_map: dict[int, str] = {}
+    synonym_map: dict[int, list[str]] = {}
 
     for cid in unique_cids:
         data = get_cache(str(cid), subdir="molecules")
@@ -66,6 +67,8 @@ def _build_column_maps(
             continue
         props: list[dict] = compounds[0].get("props", [])
         synonyms: list[str] = data.get("synonyms", [])
+        if synonyms:
+            synonym_map[cid] = synonyms
 
         ze_name = next(
             (s for s in synonyms if re.search(r"\(Z/E\)", s, re.IGNORECASE)), None
@@ -81,13 +84,12 @@ def _build_column_maps(
         if cas := next((s for s in synonyms if _CAS_RE.match(s)), None):
             cas_map[cid] = cas
 
-    return name_map, cas_map, inchikey_map, smiles_map
+    return name_map, cas_map, inchikey_map, smiles_map, synonym_map
 
 
 def _tokens_to_cids(tokens: list[str]) -> list[int]:
     return [
-        int(float(t)) for t in tokens
-        if _CID_NUM_RE.match(t) and int(float(t)) != 0
+        int(float(t)) for t in tokens if _CID_NUM_RE.match(t) and int(float(t)) != 0
     ]
 
 
@@ -96,11 +98,7 @@ def _join_values(cids: list[int], mapping: dict[int, str]) -> str | None:
     return ", ".join(values) if values else None
 
 
-def enrich_molecule_columns(df: pd.DataFrame) -> None:
-    """Replace Molecule Name, CAS, InChIKey and SMILES from PubChem cache.
-
-    Multi-CID cells (e.g. '87839 and 12345') produce comma-joined values.
-    """
+def _extract_cid_lists(df: pd.DataFrame) -> tuple[pd.Series, list[int]]:
     raw = df[MOLECULE][CID].dropna().astype(str)
     cid_lists: pd.Series = (
         raw.str.replace(r"\band\b", " ", regex=True, case=False)
@@ -110,7 +108,21 @@ def enrich_molecule_columns(df: pd.DataFrame) -> None:
     cid_lists = cid_lists[cid_lists.apply(len) > 0]
 
     unique_cids = sorted({cid for cids in cid_lists for cid in cids})
-    name_map, cas_map, inchikey_map, smiles_map = _build_column_maps(unique_cids)
+    return (cid_lists, unique_cids)
+
+
+def _enrich_molecule_columns(
+    df: pd.DataFrame,
+    cid_lists: pd.Series,
+    name_map: dict[int, str],
+    cas_map: dict[int, str],
+    inchikey_map: dict[int, str],
+    smiles_map: dict[int, str],
+) -> None:
+    """Replace Molecule Name, CAS, InChIKey and SMILES from PubChem cache.
+
+    Multi-CID cells (e.g. '87839 and 12345') produce comma-joined values.
+    """
 
     for col, mapping in [
         (MOLECULE_NAME, name_map),
@@ -122,3 +134,20 @@ def enrich_molecule_columns(df: pd.DataFrame) -> None:
         mask = updated.notna()
         if mask.any():
             df.loc[updated.index[mask], (MOLECULE, col)] = updated[mask].to_numpy()
+
+
+def _export_synonyms_csv(synonym_map: dict[int, list[str]], output_dir: Path) -> None:
+    output_dir.mkdir(parents=True, exist_ok=True)
+    for cid, synonyms in synonym_map.items():
+        csv_path = output_dir / f"{cid}_synonyms.csv"
+        with csv_path.open("w", encoding="utf-8") as f:
+            f.writelines(s + "\n" for s in synonyms)
+
+
+def process_molecules(df: pd.DataFrame, output_dir: Path) -> None:
+    cid_lists, unique_cids = _extract_cid_lists(df)
+    name_map, cas_map, inchikey_map, smiles_map, synonym_map = _parse_cid_cache(
+        unique_cids
+    )
+    _enrich_molecule_columns(df, cid_lists, name_map, cas_map, inchikey_map, smiles_map)
+    _export_synonyms_csv(synonym_map, output_dir)
