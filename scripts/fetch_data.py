@@ -89,7 +89,7 @@ def fetch_uniprot_data(unique_accessions: list[str]) -> list[str]:
 
             if i < len(to_fetch):
                 time.sleep(_REQUEST_DELAY)
-    else:
+    elif unique_accessions:
         logger.info(
             "All %d unique accession(s) found in cache, skipping API calls.",
             len(unique_accessions),
@@ -207,7 +207,8 @@ def fetch_genbank_data(
 
     new_count = count_uncached_blast_queries(blast_queries)
     failed: list[tuple[str, str, str]] = get_failed_blast_queries(blast_queries)
-    cached_ok = get_successful_blast_queries(blast_queries) if force_blast else []
+    already_resolved = get_successful_blast_queries(blast_queries)
+    cached_ok = already_resolved if force_blast else []
 
     # "no hit found" results are definitive — no point retrying them.
     no_hit = [(s, sp, err) for s, sp, err in failed if err == "no hit found"]
@@ -221,6 +222,11 @@ def fetch_genbank_data(
             logger.info("Skipping BLAST lookups, continuing without new BLAST results.")
             return {}
         _clear_blast_entries(retryable, no_hit, cached_ok)
+    elif already_resolved:
+        logger.info(
+            "All %d sequence(s) without accession resolved from BLAST cache.",
+            len(already_resolved),
+        )
 
     return resolve_missing_accessions_via_blast(df, protein_groups, blast_queries)
 
@@ -289,7 +295,7 @@ def fetch_pubchem_data(unique_cids: list[int]) -> list[int]:
 
             if i < len(to_fetch):
                 time.sleep(_REQUEST_DELAY)
-    else:
+    elif unique_cids:
         logger.info(
             "All %d CID(s) found in cache, skipping API calls.", len(unique_cids)
         )
@@ -388,7 +394,7 @@ def fetch_apa_references(unique_dois: list[str]) -> list[str]:
 
             if i < len(to_fetch):
                 time.sleep(_REQUEST_DELAY)
-    else:
+    elif unique_dois:
         logger.info(
             "All %d DOI(s) found in APA cache, skipping API calls.", len(unique_dois)
         )
