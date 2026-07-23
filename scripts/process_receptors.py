@@ -33,7 +33,7 @@ _OR_FROM_DESC_RE = re.compile(
 
 
 def get_unique_accessions(
-    df: pd.DataFrame, groups: list[str], column_name: str
+    df: pd.DataFrame, groups: list[str], column_name: str, *, verbose: bool = True
 ) -> list[str]:
     """Collect all non-null unique accessions (UniProt & NCBI) across the given
     column groups."""
@@ -43,9 +43,16 @@ def get_unique_accessions(
             msg = f"Group {group} not in the DataFrame."
             raise ValueError(msg)
         col = df[group][column_name]
-        accessions_set.update(col.dropna().astype(str).str.strip().unique())
+        group_accessions = set(col.dropna().astype(str).str.strip().unique())
+        group_accessions.discard("")
+        if verbose:
+            logger.info(
+                "  %s: %d unique accession(s).", group, len(group_accessions)
+            )
+        accessions_set.update(group_accessions)
     accessions_set.discard("")
-    logger.info("Found %d unique accession(s).", len(accessions_set))
+    if verbose:
+        logger.info("Found %d unique accession(s) in total.", len(accessions_set))
     return sorted(accessions_set)
 
 
@@ -226,12 +233,36 @@ def collect_blast_queries(
         sub = df[group]
         uid_col = sub[ACCESSION].astype(str).str.strip()
         missing = sub[ACCESSION].isna() | (uid_col == "") | uid_col.isin(fallback_set)
-        candidates = sub.loc[missing, [SEQUENCE, SPECIES]].dropna()
-        seq = candidates[SEQUENCE].astype(str).str.replace(r"\s+", "", regex=True)
-        species = candidates[SPECIES].astype(str).str.strip()
-        valid = (seq != "") & (species != "")
-        queries.update(zip(seq[valid], species[valid], strict=False))
-    logger.warning("%s sequence(s) have no accession number.", len(queries))
+        missing_rows = sub.loc[missing, [SEQUENCE, SPECIES]]
+        seq = missing_rows[SEQUENCE].astype(str).str.replace(r"\s+", "", regex=True)
+        species = missing_rows[SPECIES].astype(str).str.strip()
+        has_seq = missing_rows[SEQUENCE].notna() & (seq != "")
+        has_species = missing_rows[SPECIES].notna() & (species != "")
+
+        # Sequences with no accession AND no Species can't be BLASTed either —
+        # surface them so they aren't silently dropped.
+        unqueryable_seqs = set(seq[has_seq & ~has_species])
+        if unqueryable_seqs:
+            logger.warning(
+                "  %s: %d sequence(s) have no accession number and no Species, "
+                "cannot run BLAST.",
+                group,
+                len(unqueryable_seqs),
+            )
+
+        valid = has_seq & has_species
+        group_queries = set(zip(seq[valid], species[valid], strict=False))
+        if group_queries:
+            logger.warning(
+                "  %s: %d sequence(s) have no accession number.",
+                group,
+                len(group_queries),
+            )
+        queries.update(group_queries)
+    if queries:
+        logger.warning(
+            "%s sequence(s) have no accession number in total.", len(queries)
+        )
     return list(queries)
 
 
