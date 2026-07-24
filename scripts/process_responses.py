@@ -18,7 +18,7 @@ from scripts.columns import (
 
 _ALLOWED_PARAMETERS = {"primary", "secondary", "dose-response"}
 _ALLOWED_VALUE_NATURES = {"raw", "norm_rec", "norm_pair", "norm_other", "ec50"}
-_ALLOWED_UNITS = {"na", "mol/l", "spikes/s", "v/v", "ug/ul", "um"}
+_ALLOWED_UNITS = {"na", "mol/l", "spikes/s", "v/v", "ug/ul", "um", "m"}
 _ALLOWED_CONCENTRATION_UNITS = {
     "v/v",
     "m",
