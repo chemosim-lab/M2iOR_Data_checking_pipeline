@@ -22,6 +22,7 @@ from scripts.fetch_blast import (
     get_failed_blast_queries,
     get_successful_blast_queries,
 )
+from scripts.process_molecules import parse_cid_cell
 from scripts.process_receptors import resolve_missing_accessions_via_blast
 
 logger = colorlog.getLogger(__name__)
@@ -301,7 +302,9 @@ def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
     """For Molecule rows with an empty CID, look up the CID via CAS on PubChem.
     Updates the CID column in df. Returns the list of newly found CIDs."""
     molecule_df = df[MOLECULE]
-    no_cid = molecule_df[CID_COL].isna() | (molecule_df[CID_COL] == 0)
+    no_cid = molecule_df[CID_COL].isna() | molecule_df[CID_COL].astype(str).apply(
+        lambda v: len(parse_cid_cell(v)) == 0
+    )
     missing_cid = no_cid & molecule_df[CAS_COL].notna()
     cas_series = molecule_df.loc[missing_cid, CAS_COL]
 
