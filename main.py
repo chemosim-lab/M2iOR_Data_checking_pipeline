@@ -136,7 +136,7 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         # BLAST may have written new GenBank accessions into the 'Accession' column.
         # Re-collect all UIDs so that BLAST-discovered accessions are also named.
         all_unique_ids_after_blast: list[str] = get_unique_accessions(
-            df, groups=protein_groups, column_name=ACCESSION
+            df, groups=protein_groups, column_name=ACCESSION, verbose=False
         )
         blast_only_accessions = [
             uid
