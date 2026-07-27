@@ -184,15 +184,35 @@ def enrich_species_column(
             name: str = data["organism"]["scientificName"]
             if name:
                 species_by_uid[uid] = name
-        except KeyError, TypeError:
+        except (KeyError, TypeError):
             continue
 
     for group in groups:
         uid_col = df[group][ACCESSION].astype(str).str.strip()
         updated = uid_col.map(species_by_uid)
         mask = updated.notna()
-        if mask.any():
-            df.loc[updated.index[mask], (group, SPECIES)] = updated[mask].to_numpy()
+        if not mask.any():
+            continue
+
+        # Flag (but don't block on) a mismatch between the author-reported species
+        # and the one UniProt associates with this accession - often a sign of a
+        # mistyped or wrong accession number.
+        reported_raw = df[group][SPECIES]
+        reported = reported_raw.astype(str).str.strip()
+        has_reported = reported_raw.notna() & (reported != "")
+        mismatch = mask & has_reported & (reported.str.lower() != updated.str.lower())
+        for idx in df.index[mismatch]:
+            logger.warning(
+                "  %s row %s: accession %s maps to UniProt species %r, "
+                "which differs from the reported species %r - overwriting.",
+                group,
+                idx,
+                uid_col[idx],
+                updated[idx],
+                reported[idx],
+            )
+
+        df.loc[updated.index[mask], (group, SPECIES)] = updated[mask].to_numpy()
 
 
 def add_empty_column_after(
