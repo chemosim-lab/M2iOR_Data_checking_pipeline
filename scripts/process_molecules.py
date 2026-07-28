@@ -120,6 +120,16 @@ def _parse_cid_cache(
     return name_map, cas_map, inchikey_map, smiles_map, synonym_map
 
 
+def _ensure_object_dtype(df: pd.DataFrame, column: tuple[str, str]) -> None:
+    """Widen an all-null (float64) column so it can hold string values.
+
+    A column left entirely empty in the source Excel is read as float64;
+    assigning strings into it then raises pandas.errors.LossySetitemError.
+    """
+    if df[column].dtype != object:
+        df[column] = df[column].astype(object)
+
+
 def _join_values(cids: list[int], mapping: dict[int, str]) -> str | None:
     values = [mapping[c] for c in cids if c in mapping]
     return ", ".join(values) if values else None
@@ -168,6 +178,7 @@ def _enrich_molecule_columns(
         updated = cid_lists.apply(_join_values, mapping=mapping)
         mask = updated.notna()
         if mask.any():
+            _ensure_object_dtype(df, (MOLECULE, col))
             df.loc[updated.index[mask], (MOLECULE, col)] = updated[mask].to_numpy()
 
 
@@ -185,6 +196,7 @@ def _enrich_mixture_column(
     computed = cid_lists.apply(_aggregate_mixture, mapping=mixture_map)
     mask = computed.notna() & ~is_explicit_mixture.loc[computed.index]
     if mask.any():
+        _ensure_object_dtype(df, (MOLECULE, MIXTURE))
         df.loc[computed.index[mask], (MOLECULE, MIXTURE)] = computed[mask].to_numpy()
 
 
