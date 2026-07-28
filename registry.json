@@ -65,9 +65,9 @@
   {
     "study_id": "Tanaka_CurrBiol-2009",
     "file_path": "input/clean_Seb/Tanaka_CurrBiol-2009.xlsx",
-    "status": "FAILED",
-    "processed_at": null,
-    "error_message": "Column 'Value' contains non-float value(s) at row(s): [17, 27, 34, 36, 38, 39, 43, 44, 45, 46, 47, 48, 49, 53, 58, 63, 64, 65, 66, 67, 68, 69, 71, 76, 87, 89, 107, 126, 127, 128, 129, 130]"
+    "status": "DONE",
+    "processed_at": "2026-07-26T23:35:51.055264",
+    "error_message": null
   },
   {
     "study_id": "Wang_PNAS-2010",
@@ -88,6 +88,27 @@
     "file_path": "input/clean_Seb/test.xlsx",
     "status": "DONE",
     "processed_at": "2026-06-12T12:50:15.839008",
+    "error_message": null
+  },
+  {
+    "study_id": "Guo_MBE-2021",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Guo_MBE-2021.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-26T23:41:58.367686",
+    "error_message": null
+  },
+  {
+    "study_id": "Pask_NatCommun-2017",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Pask_NatCommun-2017.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-24T20:05:22.380962",
+    "error_message": null
+  },
+  {
+    "study_id": "Robert_Front_Cell_Neurosci-2021",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Robert_Front_Cell_Neurosci-2021.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-26T23:36:45.874457",
     "error_message": null
   }
 ]
