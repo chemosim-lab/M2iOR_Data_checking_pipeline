@@ -64,9 +64,11 @@ from scripts.registry import ProcessingStatus, StudyFileTracker, StudyProcessing
 if TYPE_CHECKING:
     from pandas import DataFrame
 
-M2IOR_DATA_INPUT_PATH = Path(
-    "/home/andre/Dev/M2iOR_migration/M2iOR/M2iOR_web_public-main/resources/data"
+M2IOR_WEB_PUBLIC_PATH = Path(
+    "/home/andre/Dev/M2iOR_migration/M2iOR/M2iOR_web_public-main"
 )
+M2IOR_DATA_INPUT_PATH = M2IOR_WEB_PUBLIC_PATH / "resources" / "data"
+M2IOR_MOLECULE_IMAGES_PATH = M2IOR_WEB_PUBLIC_PATH / "public" / "images" / "molecules"
 REGISTRY_FILE = Path("./registry.json")
 
 logger = colorlog.getLogger(__name__)
@@ -165,7 +167,9 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         if new_cids:
             fetch_pubchem_data(new_cids)
 
-        process_molecules(df, M2IOR_DATA_INPUT_PATH / "cid_synonyms")
+        process_molecules(
+            df, M2IOR_DATA_INPUT_PATH / "cid_synonyms", M2IOR_MOLECULE_IMAGES_PATH
+        )
 
         # ----------------------------------------------------------------------
         # RESPONSES ------------------------------------------------------------

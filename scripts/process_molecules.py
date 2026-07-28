@@ -6,6 +6,11 @@ import pandas as pd
 
 from scripts.cache_manager import get_cache
 from scripts.columns import CAS, CID, INCHIKEY, MIXTURE, MOLECULE, MOLECULE_NAME, SMILES
+from scripts.molecule_stereo import (
+    MONOMOLECULAR,
+    SUM_OF_ISOMERS,
+    export_stereo_classification,
+)
 
 _CAS_RE = re.compile(r"^\d{2,7}-\d{2}-\d$")
 _CID_TOKEN_RE = re.compile(r"^\d+(?:\.\d+)?$")
@@ -120,6 +125,18 @@ def _join_values(cids: list[int], mapping: dict[int, str]) -> str | None:
     return ", ".join(values) if values else None
 
 
+def _aggregate_mixture(cids: list[int], mapping: dict[int, str]) -> str | None:
+    """Aggregate the per-CID stereo classification of a (possibly multi-CID) row.
+
+    A row is "sum of isomers" as soon as one of its components is, otherwise
+    "monomolecular". Returns None if no CID in the row could be classified.
+    """
+    statuses = [mapping[c] for c in cids if c in mapping]
+    if not statuses:
+        return None
+    return SUM_OF_ISOMERS if SUM_OF_ISOMERS in statuses else MONOMOLECULAR
+
+
 def _extract_cid_lists(df: pd.DataFrame) -> tuple[pd.Series, list[int]]:
     raw = df[MOLECULE][CID].dropna().astype(str)
     cid_lists: pd.Series = raw.apply(parse_cid_cell)
@@ -154,6 +171,23 @@ def _enrich_molecule_columns(
             df.loc[updated.index[mask], (MOLECULE, col)] = updated[mask].to_numpy()
 
 
+def _enrich_mixture_column(
+    df: pd.DataFrame, cid_lists: pd.Series, mixture_map: dict[int, str]
+) -> None:
+    """Set Mixture from the SMILES-based stereo classification.
+
+    Rows explicitly curated as "mixture" (an actual mix of several named
+    compounds, see `validate_cid_or_cas`) are left untouched.
+    """
+    is_explicit_mixture = (
+        df[MOLECULE][MIXTURE].astype(str).str.strip().str.lower() == "mixture"
+    )
+    computed = cid_lists.apply(_aggregate_mixture, mapping=mixture_map)
+    mask = computed.notna() & ~is_explicit_mixture.loc[computed.index]
+    if mask.any():
+        df.loc[computed.index[mask], (MOLECULE, MIXTURE)] = computed[mask].to_numpy()
+
+
 def _export_synonyms_csv(synonym_map: dict[int, list[str]], output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     for cid, synonyms in synonym_map.items():
@@ -162,10 +196,13 @@ def _export_synonyms_csv(synonym_map: dict[int, list[str]], output_dir: Path) ->
             f.writelines(s + "\n" for s in synonyms)
 
 
-def process_molecules(df: pd.DataFrame, output_dir: Path) -> None:
+def process_molecules(df: pd.DataFrame, output_dir: Path, images_dir: Path) -> None:
     cid_lists, unique_cids = _extract_cid_lists(df)
     name_map, cas_map, inchikey_map, smiles_map, synonym_map = _parse_cid_cache(
         unique_cids
     )
     _enrich_molecule_columns(df, cid_lists, name_map, cas_map, inchikey_map, smiles_map)
     _export_synonyms_csv(synonym_map, output_dir)
+
+    mixture_map = export_stereo_classification(unique_cids, smiles_map, images_dir)
+    _enrich_mixture_column(df, cid_lists, mixture_map)
