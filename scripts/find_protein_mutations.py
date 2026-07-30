@@ -71,11 +71,6 @@ def _emit_insertion(seq_ref: str, ref_pos: int, ins_aas: list[str]) -> str:
     return f"{aa_left}{ref_pos}_{aa_right}{ref_pos + 1}ins{inserted}"
 
 
-def _terminal_deletions(seq_ref: str, start: int, end: int) -> list[str]:
-    """HGVS deletion tokens for a stretch of *seq_ref* absent from the query."""
-    return [f"{seq_ref[i]}{i + 1}del" for i in range(start, end)]
-
-
 def _make_aligner() -> Align.PairwiseAligner:
     aligner = Align.PairwiseAligner()
     aligner.mode = "local"  # Smith-Waterman
@@ -126,10 +121,17 @@ def align_and_annotate(seq: str, seq_ref: str) -> tuple[str, float, float]:
         mutations_str: mutations joined by ";", empty string if sequences are identical
         pid_aln: identity over alignment length (gaps included), rounded to 2 decimals
         pid_short: identity over the shorter sequence length, rounded to 2 decimals
+
+    Residues of either sequence that fall outside the local alignment's window
+    (terminal indels) are deliberately NOT reported as mutations: unlike a
+    substitution or an internal indel, a truncated/extended terminus is as
+    likely to come from a signal peptide, an expression tag, an isoform, or a
+    partial construct as from an actual mutation, so folding it into the same
+    HGVS-token field as real substitutions would be misleading. Its effect is
+    still visible as a gap between pid_aln (identity within the aligned core)
+    and pid_short (identity over the shorter full-length sequence).
     """
-    # A trailing "*" is a stop-codon marker from translation, not a residue;
-    # keeping it would surface as a bogus terminal insertion/substitution
-    # now that terminal indels are no longer silently dropped.
+    # A trailing "*" is a stop-codon marker from translation, not a residue.
     seq = seq.rstrip("*")
     seq_ref = seq_ref.rstrip("*")
 
@@ -137,22 +139,13 @@ def align_and_annotate(seq: str, seq_ref: str) -> tuple[str, float, float]:
     aln = aligner.align(seq_ref, seq)[0]
     a, b = aln[0], aln[1]
 
-    # A local alignment doesn't have to span the full extent of either
-    # sequence: residues outside its window are real differences (terminal
-    # indels), not noise, and must be reported rather than silently dropped
-    # -- otherwise a genuine N/C-terminal extension can surface as a bogus
-    # point substitution at the alignment's boundary (e.g. "M1L" instead of
-    # an 11-residue N-terminal insertion).
-    ref_blocks, query_blocks = aln.aligned
-    ref_start, ref_end = int(ref_blocks[0][0]), int(ref_blocks[-1][1])
-    query_start, query_end = int(query_blocks[0][0]), int(query_blocks[-1][1])
+    # A local alignment doesn't have to start at seq_ref's first residue:
+    # ref_pos must be seeded at the alignment's actual start, not 0, or every
+    # position reported from here on is silently offset.
+    ref_blocks, _query_blocks = aln.aligned
+    ref_pos = int(ref_blocks[0][0])
 
     mutations: list[str] = []
-    mutations.extend(_terminal_deletions(seq_ref, 0, ref_start))
-    if query_start > 0:
-        mutations.append(_emit_insertion(seq_ref, 0, list(seq[:query_start])))
-
-    ref_pos = ref_start
     ins_buffer: list[str] = []
 
     for ref_aa, query_aa in zip(a, b, strict=True):
@@ -170,10 +163,6 @@ def align_and_annotate(seq: str, seq_ref: str) -> tuple[str, float, float]:
 
     if ins_buffer:
         mutations.append(_emit_insertion(seq_ref, ref_pos, ins_buffer))
-
-    mutations.extend(_terminal_deletions(seq_ref, ref_end, len(seq_ref)))
-    if query_end < len(seq):
-        mutations.append(_emit_insertion(seq_ref, len(seq_ref), list(seq[query_end:])))
 
     matches = sum(x == y and x != "-" for x, y in zip(a, b, strict=True))
     aln_len = len(a)
