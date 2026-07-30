@@ -12,6 +12,7 @@ from scripts.columns import (
     ACCESSION,
     DATABASE,
     IDENTITY,
+    IDENTITY_SHORT,
     MUTATION,
     RECEPTOR_NAME,
     SEQUENCE,
@@ -378,11 +379,11 @@ def _normalize_sequence(
 def _compute_mutations(
     seq: Any,
     seq_ref: str | None,
-) -> tuple[str | None, float | None]:
+) -> tuple[str | None, float | None, float | None]:
     if seq_ref is None or pd.isna(seq) or not str(seq).strip():
-        return None, None
-    mut_str, pid_aln, _pid_short = align_and_annotate(seq, seq_ref)
-    return mut_str, pid_aln
+        return None, None, None
+    mut_str, pid_aln, pid_short = align_and_annotate(seq, seq_ref)
+    return mut_str, pid_aln, pid_short
 
 
 def enrich_with_reference_and_mutations(
@@ -422,6 +423,7 @@ def enrich_with_reference_and_mutations(
 
         seq_refs: list[str | None] = []
         identities: list[float | None] = []
+        identities_short: list[float | None] = []
         mutations_list: list[str | None] = []
         database_list: list[str | None] = []
 
@@ -433,11 +435,13 @@ def enrich_with_reference_and_mutations(
             database_list.append(database)
 
             seq = _normalize_sequence(df, idx, group, row[SEQUENCE], seq_ref)
-            mut_str, pid_aln = _compute_mutations(seq, seq_ref)
+            mut_str, pid_aln, pid_short = _compute_mutations(seq, seq_ref)
             identities.append(pid_aln)
+            identities_short.append(pid_short)
             mutations_list.append(mut_str)
 
         df.loc[:, (group, SEQUENCE_REF)] = seq_refs
         df.loc[:, (group, IDENTITY)] = identities
+        df.loc[:, (group, IDENTITY_SHORT)] = identities_short
         df.loc[:, (group, MUTATION)] = mutations_list
         df.loc[:, (group, DATABASE)] = database_list

@@ -14,6 +14,7 @@ from scripts.columns import (
     DATABASE,
     GENE_NAME,
     IDENTITY,
+    IDENTITY_SHORT,
     RECEPTOR_NAME,
     SEQUENCE,
     SEQUENCE_REF,
@@ -110,6 +111,9 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         )
         add_empty_column_after(
             df, protein_groups, after_column=DATABASE, new_column=IDENTITY
+        )
+        add_empty_column_after(
+            df, protein_groups, after_column=IDENTITY, new_column=IDENTITY_SHORT
         )
 
         # ----------------------------------------------------------------------

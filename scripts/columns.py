@@ -14,6 +14,7 @@ UNIPROT_ID = "UniProt ID"
 ACCESSION = "Accession"
 DATABASE = "Database"
 IDENTITY = "Identity"  # New
+IDENTITY_SHORT = "Identity_short"  # identity over shorter sequence's full length (coverage-sensitive)
 MUTATION = "Mutation"
 TAG = "Tag"
 SEQUENCE = "Sequence"
