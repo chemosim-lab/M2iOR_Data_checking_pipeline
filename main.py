@@ -254,6 +254,11 @@ if __name__ == "__main__":
         help="Retry only failed files",
     )
     _ = parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Reprocess all files, ignoring DONE/FAILED status, like --force but without forcing BLAST re-queries.",
+    )
+    _ = parser.add_argument(
         "--force",
         nargs="?",
         const="__all__",
@@ -267,9 +272,10 @@ if __name__ == "__main__":
     file_arg = cast(str | None, args.file)
     do_pending = cast(bool, args.pending)
     do_retry = cast(bool, args.retry)
+    do_all = cast(bool, args.all)
     force_arg = cast(str | None, args.force)
 
-    input_path = Path("/nfs/balthazar/andre/m2ior_input/")
+    input_path = Path("/home/andre/mnt/balthazar/andre/m2ior_input/")
 
     print("Loading processing registry...")
     registry = StudyProcessingRegistry.load(REGISTRY_FILE)
@@ -292,6 +298,18 @@ if __name__ == "__main__":
         for excel_file in found_files:
             print(f"File: {excel_file.file_path}")
             process_raw_excel_file(excel_file.file_path)
+    elif do_all:
+        # Reset all existing trackers to PENDING before reprocessing, without
+        # forcing BLAST re-queries (unlike --force).
+        for tracker in registry.all_done() + registry.all_failed():
+            tracker.status = ProcessingStatus.PENDING
+            tracker.error_message = None
+        found_file_paths = sorted(input_path.glob("**/*.xlsx"))
+        print(f"Found {len(found_file_paths)} files — reprocessing all")
+        _ = input("Press Enter to continue")
+        for excel_file_path in found_file_paths:
+            print(f"File: {excel_file_path}")
+            process_raw_excel_file(excel_file_path)
     elif force_arg is not None:
         if force_arg == "__all__":
             # Reset all existing trackers to PENDING before reprocessing
