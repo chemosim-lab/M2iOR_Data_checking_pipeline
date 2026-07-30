@@ -71,6 +71,11 @@ def _emit_insertion(seq_ref: str, ref_pos: int, ins_aas: list[str]) -> str:
     return f"{aa_left}{ref_pos}_{aa_right}{ref_pos + 1}ins{inserted}"
 
 
+def _terminal_deletions(seq_ref: str, start: int, end: int) -> list[str]:
+    """HGVS deletion tokens for a stretch of *seq_ref* absent from the query."""
+    return [f"{seq_ref[i]}{i + 1}del" for i in range(start, end)]
+
+
 def _make_aligner() -> Align.PairwiseAligner:
     aligner = Align.PairwiseAligner()
     aligner.mode = "local"  # Smith-Waterman
@@ -122,12 +127,32 @@ def align_and_annotate(seq: str, seq_ref: str) -> tuple[str, float, float]:
         pid_aln: identity over alignment length (gaps included), rounded to 2 decimals
         pid_short: identity over the shorter sequence length, rounded to 2 decimals
     """
+    # A trailing "*" is a stop-codon marker from translation, not a residue;
+    # keeping it would surface as a bogus terminal insertion/substitution
+    # now that terminal indels are no longer silently dropped.
+    seq = seq.rstrip("*")
+    seq_ref = seq_ref.rstrip("*")
+
     aligner = _make_aligner()
     aln = aligner.align(seq_ref, seq)[0]
     a, b = aln[0], aln[1]
 
+    # A local alignment doesn't have to span the full extent of either
+    # sequence: residues outside its window are real differences (terminal
+    # indels), not noise, and must be reported rather than silently dropped
+    # -- otherwise a genuine N/C-terminal extension can surface as a bogus
+    # point substitution at the alignment's boundary (e.g. "M1L" instead of
+    # an 11-residue N-terminal insertion).
+    ref_blocks, query_blocks = aln.aligned
+    ref_start, ref_end = int(ref_blocks[0][0]), int(ref_blocks[-1][1])
+    query_start, query_end = int(query_blocks[0][0]), int(query_blocks[-1][1])
+
     mutations: list[str] = []
-    ref_pos = 0
+    mutations.extend(_terminal_deletions(seq_ref, 0, ref_start))
+    if query_start > 0:
+        mutations.append(_emit_insertion(seq_ref, 0, list(seq[:query_start])))
+
+    ref_pos = ref_start
     ins_buffer: list[str] = []
 
     for ref_aa, query_aa in zip(a, b, strict=True):
@@ -145,6 +170,10 @@ def align_and_annotate(seq: str, seq_ref: str) -> tuple[str, float, float]:
 
     if ins_buffer:
         mutations.append(_emit_insertion(seq_ref, ref_pos, ins_buffer))
+
+    mutations.extend(_terminal_deletions(seq_ref, ref_end, len(seq_ref)))
+    if query_end < len(seq):
+        mutations.append(_emit_insertion(seq_ref, len(seq_ref), list(seq[query_end:])))
 
     matches = sum(x == y and x != "-" for x, y in zip(a, b, strict=True))
     aln_len = len(a)
