@@ -16,15 +16,21 @@ _CAS_RE = re.compile(r"^\d{2,7}-\d{2}-\d$")
 _CID_TOKEN_RE = re.compile(r"^\d+(?:\.\d+)?$")
 
 
-def parse_cid_cell(raw: str) -> list[int]:
+def parse_cid_cell(raw: object) -> list[int]:
     """Parse a CID cell into its list of CIDs.
 
     Accepts a single CID or several joined by 'and'/commas (e.g. '123 and 456').
     Free text such as 'mixture of 100 compounds' must be treated as not
     applicable rather than mined for a stray number, so the whole cell is
     rejected unless *every* token is numeric.
+
+    `raw` may be a non-string scalar (e.g. NaN) since callers sometimes pass
+    a cell through `.astype(str)` where missing values aren't guaranteed to
+    become the literal string "nan" -- such values are treated as empty.
     """
-    text = raw.strip()
+    if pd.isna(raw):
+        return []
+    text = str(raw).strip()
     if not text:
         return []
     normalized = re.sub(r"\band\b", " ", text, flags=re.IGNORECASE).replace(",", " ")
