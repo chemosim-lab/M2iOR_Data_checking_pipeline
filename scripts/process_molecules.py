@@ -109,10 +109,7 @@ def _parse_cid_cache(
         if synonyms:
             synonym_map[cid] = synonyms
 
-        ze_name = next(
-            (s for s in synonyms if re.search(r"\(Z/E\)", s, re.IGNORECASE)), None
-        )
-        if name := ze_name or data.get("record_title"):
+        if name := data.get("record_title"):
             name_map[cid] = name
         if key := _extract_prop(props, "InChIKey"):
             inchikey_map[cid] = key
