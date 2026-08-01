@@ -166,7 +166,7 @@ def process_receptors_name_columns(
     for group in groups:
         receptors_names = df[group][ACCESSION].map(receptor_name_by_uid)
         df.loc[:, (group, RECEPTOR_NAME)] = receptors_names.astype(
-            df[(group, RECEPTOR_NAME)].dtype
+            df[group][RECEPTOR_NAME].dtype
         )
 
     enrich_species_column(df, groups, all_unique_uniprot_ids)

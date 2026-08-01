@@ -129,7 +129,8 @@ def _ensure_object_dtype(df: pd.DataFrame, column: tuple[str, str]) -> None:
     A column left entirely empty in the source Excel is read as float64;
     assigning strings into it then raises pandas.errors.LossySetitemError.
     """
-    if df[column].dtype != object:
+    group, col = column
+    if df[group][col].dtype != object:
         df[column] = df[column].astype(object)
 
 

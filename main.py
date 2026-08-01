@@ -3,11 +3,19 @@
 import argparse
 import logging
 import sys
+import warnings
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
 import colorlog
+import pandas as pd
 from pandas.core.frame import DataFrame
+
+# The Excel template's column order (Order, Species, Receptor Name, ...) is
+# deliberately not alphabetical, so the columns MultiIndex is never lexsorted -
+# pandas' fast binary-search path for (group, column) indexing doesn't apply,
+# and it warns on every such access even though results are still correct.
+warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 
 from scripts.columns import (
     ACCESSION,
