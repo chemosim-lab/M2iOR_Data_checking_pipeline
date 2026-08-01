@@ -2,56 +2,56 @@
   {
     "study_id": "test_mut",
     "file_path": "input/test_mut.xlsx",
-    "status": "FAILED",
+    "status": "PENDING",
     "processed_at": "2026-06-02T16:50:26.630040",
-    "error_message": "input/test_mut.xlsx: missing columns in 'Response'.\n  missing : ['Value Nature']\n  found   : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']"
+    "error_message": null
   },
   {
     "study_id": "deFouchier_NatCommun-2017",
     "file_path": "input/clean_Seb/deFouchier_NatCommun-2017.xlsx",
     "status": "DONE",
-    "processed_at": "2026-06-11T11:17:04.967636",
+    "processed_at": "2026-07-30T18:29:18.011671",
     "error_message": null
   },
   {
     "study_id": "03_ThanetP_data_complete",
     "file_path": "input/clean_Seb/03_ThanetP_data_complete.xlsx",
-    "status": "DONE",
+    "status": "PENDING",
     "processed_at": "2026-06-12T14:41:17.749854",
     "error_message": null
   },
   {
     "study_id": "Yan_test",
     "file_path": "input/clean_Seb/Yan_test.xlsx",
-    "status": "FAILED",
+    "status": "PENDING",
     "processed_at": "2026-06-10T13:57:34.162506",
-    "error_message": "Column 'Value' contains non-float value(s) at row(s): [2]"
+    "error_message": null
   },
   {
     "study_id": "Yan_jinphys-2015",
     "file_path": "input/clean_Seb/Yan_jinphys-2015.xlsx",
     "status": "DONE",
-    "processed_at": "2026-06-10T19:00:36.773497",
+    "processed_at": "2026-07-30T16:03:52.252218",
     "error_message": null
   },
   {
     "study_id": "Mo_JAFC-2023",
     "file_path": "input/clean_Seb/Mo_JAFC-2023.xlsx",
     "status": "DONE",
-    "processed_at": "2026-06-12T09:59:28.394275",
+    "processed_at": "2026-07-30T16:02:15.663208",
     "error_message": null
   },
   {
     "study_id": "Kreher_Neuron-2005",
     "file_path": "input/clean_Seb/Kreher_Neuron-2005.xlsx",
-    "status": "DONE",
+    "status": "PENDING",
     "processed_at": "2026-06-10T19:01:34.914024",
     "error_message": null
   },
   {
     "study_id": "Kreher_Neuron-2008",
     "file_path": "input/clean_Seb/Kreher_Neuron-2008.xlsx",
-    "status": "DONE",
+    "status": "PENDING",
     "processed_at": "2026-06-10T19:01:28.756882",
     "error_message": null
   },
@@ -59,56 +59,203 @@
     "study_id": "Mathew_PNAS-2013",
     "file_path": "input/clean_Seb/Mathew_PNAS-2013.xlsx",
     "status": "DONE",
-    "processed_at": "2026-06-10T19:01:15.212218",
+    "processed_at": "2026-07-30T16:01:52.333365",
     "error_message": null
   },
   {
     "study_id": "Tanaka_CurrBiol-2009",
     "file_path": "input/clean_Seb/Tanaka_CurrBiol-2009.xlsx",
     "status": "DONE",
-    "processed_at": "2026-07-26T23:35:51.055264",
+    "processed_at": "2026-07-30T16:03:05.035453",
     "error_message": null
   },
   {
     "study_id": "Wang_PNAS-2010",
     "file_path": "input/clean_Seb/Wang_PNAS-2010.xlsx",
-    "status": "FAILED",
-    "processed_at": null,
-    "error_message": "Column 'Concentration' contains non-float value(s) at row(s): [826, 849, 875, 929, 955, 1024, 1192, 1211, 1213, 1308, 1382, 1390, 1398, 1440, 1444, 1466, 1470, 1560, 2054, 2058, 2069, 2078, 2145, 2150, 2154, 2172, 2205, 2230, 2233, 2236, 2237, 2261, 2265, 2282, 2306, 2310, 2313, 2418, 2431, 2455, 2470, 2883, 2893, 2908, 2936, 2954, 2972, 2985, 2993, 3001, 3046, 3071, 3137, 3153, 3179, 3217, 3220]"
+    "status": "DONE",
+    "processed_at": "2026-07-30T19:24:41.601479",
+    "error_message": null
   },
   {
     "study_id": "deFouchier_FrontEcolEvol-2015",
     "file_path": "input/clean_Seb/deFouchier_FrontEcolEvol-2015.xlsx",
-    "status": "FAILED",
-    "processed_at": "2026-06-15T10:53:49.893045",
-    "error_message": "Aborted by user: 4 BLAST lookup(s) required."
+    "status": "DONE",
+    "processed_at": "2026-07-30T18:28:51.257576",
+    "error_message": null
   },
   {
     "study_id": "test",
     "file_path": "input/clean_Seb/test.xlsx",
-    "status": "DONE",
+    "status": "FAILED",
     "processed_at": "2026-06-12T12:50:15.839008",
-    "error_message": null
+    "error_message": "Column 'Unit' contains invalid value(s) ['normalized value'] (allowed: ['m', 'mol/l', 'na', 'percent', 'spikes/s', 'ug/ul', 'um', 'v/v'])"
   },
   {
     "study_id": "Guo_MBE-2021",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Guo_MBE-2021.xlsx",
     "status": "DONE",
-    "processed_at": "2026-07-26T23:41:58.367686",
+    "processed_at": "2026-07-31T15:41:46.910651",
     "error_message": null
   },
   {
     "study_id": "Pask_NatCommun-2017",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Pask_NatCommun-2017.xlsx",
     "status": "DONE",
-    "processed_at": "2026-07-24T20:05:22.380962",
+    "processed_at": "2026-07-30T16:02:32.347087",
     "error_message": null
   },
   {
     "study_id": "Robert_Front_Cell_Neurosci-2021",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Robert_Front_Cell_Neurosci-2021.xlsx",
     "status": "DONE",
-    "processed_at": "2026-07-26T23:36:45.874457",
+    "processed_at": "2026-08-01T15:31:42.867833",
+    "error_message": null
+  },
+  {
+    "study_id": "Carey_Nature-2010",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Carey_Nature-2010.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-31T15:41:58.235156",
+    "error_message": null
+  },
+  {
+    "study_id": "Chang_Curr_Biol-2023",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Chang_Curr_Biol-2023.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:00:29.695918",
+    "error_message": null
+  },
+  {
+    "study_id": "Dobritsa_et.al._2003",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Dobritsa_et.al._2003.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:00:31.140383",
+    "error_message": null
+  },
+  {
+    "study_id": "Dweck_et_al._2015a",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Dweck_et_al._2015a.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:00:31.737567",
+    "error_message": null
+  },
+  {
+    "study_id": "Goldman_et.al._2005",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Goldman_et.al._2005.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:00:32.335231",
+    "error_message": null
+  },
+  {
+    "study_id": "Hallem_et.al._2004",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Hallem_et.al._2004.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:00:59.901112",
+    "error_message": null
+  },
+  {
+    "study_id": "Hallem_et.al._2006",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Hallem_et.al._2006.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:01:33.656075",
+    "error_message": null
+  },
+  {
+    "study_id": "Kreher_et.al._2005",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Kreher_et.al._2005.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:01:37.853509",
+    "error_message": null
+  },
+  {
+    "study_id": "Kreher_et.al._2008",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Kreher_et.al._2008.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:01:44.887500",
+    "error_message": null
+  },
+  {
+    "study_id": "Liu_Front_Physiol-2020",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Liu_Front_Physiol-2020.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:01:46.920310",
+    "error_message": null
+  },
+  {
+    "study_id": "Liu_Front_Physiol-2022",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Liu_Front_Physiol-2022.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:01:48.008909",
+    "error_message": null
+  },
+  {
+    "study_id": "Montague_et_al._2011",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Montague_et_al._2011.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:02:21.879279",
+    "error_message": null
+  },
+  {
+    "study_id": "Robert_Mol_Ecol-2022",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Robert_Mol_Ecol-2022.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-31T14:33:45.621648",
+    "error_message": null
+  },
+  {
+    "study_id": "Slone_PNAS-2017",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Slone_PNAS-2017.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:03:03.015894",
+    "error_message": null
+  },
+  {
+    "study_id": "Van_der_Goes_van_Naters_et.al._2007",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Van_der_Goes_van_Naters_et.al._2007.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:03:06.046119",
+    "error_message": null
+  },
+  {
+    "study_id": "Wang_Insects-2024",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Wang_Insects-2024.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:03:07.203190",
+    "error_message": null
+  },
+  {
+    "study_id": "Yuvaraj_IBMB-2018",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Yuvaraj_IBMB-2018.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T16:03:54.367447",
+    "error_message": null
+  },
+  {
+    "study_id": "deFouchier_NatCommun-2017-AdF",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/deFouchier_NatCommun-2017-AdF.xlsx",
+    "status": "PENDING",
+    "processed_at": "2026-07-30T12:28:59.513238",
+    "error_message": null
+  },
+  {
+    "study_id": "Template_data_collection_HOU_2021_MBE",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Template_data_collection_HOU_2021_MBE.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "/home/andre/mnt/balthazar/andre/m2ior_input/Template_data_collection_HOU_2021_MBE.xlsx: missing columns in 'Molecule'.\n  missing : ['Solvent used for dilution']\n  found   : ['Molecule Name', 'CAS', 'CID', 'InChIKey', 'SMILES', 'Solvant used for dilution', 'Mixture']"
+  },
+  {
+    "study_id": "Template_data_collection_Yuvaraj_2024",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Template_data_collection_Yuvaraj_2024.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "/home/andre/mnt/balthazar/andre/m2ior_input/Template_data_collection_Yuvaraj_2024.xlsx: missing columns in 'Molecule'.\n  missing : ['Solvent used for dilution']\n  found   : ['Molecule Name', 'CAS', 'CID', 'InChIKey', 'SMILES', 'Solvant used for dilution', 'Mixture']"
+  },
+  {
+    "study_id": "Hou_MolBioEvol_2021",
+    "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Hou_MolBioEvol_2021.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-07-30T20:49:14.670239",
     "error_message": null
   }
 ]
