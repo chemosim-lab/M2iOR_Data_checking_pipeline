@@ -31,7 +31,7 @@ _ALLOWED_CONCENTRATION_UNITS = {
     "mg",
     "nmol",
 }
-_ALLOWED_STIMULATION_FLUX_UNITS = {"ml/s", "l/min"}
+_ALLOWED_STIMULATION_FLUX_UNITS = {"ml/s", "l/min", "ml/min"}
 _ALLOWED_STIMULATION_DURATION_UNITS = {"ms", "s"}
 _ALLOWED_EXPERIMENTAL_TECHNIQUES = {
     "two-electrode voltage clamp",
