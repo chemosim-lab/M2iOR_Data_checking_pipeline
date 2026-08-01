@@ -265,8 +265,8 @@ def collect_blast_queries(
         unqueryable_seqs = set(seq[has_seq & ~has_species])
         if unqueryable_seqs:
             logger.warning(
-                "  %s: %d sequence(s) have no accession number and no Species, "
-                "cannot run BLAST.",
+                "  %s: %d sequence(s) have no accession number in the Excel "
+                "input and no Species, cannot run BLAST.",
                 group,
                 len(unqueryable_seqs),
             )
@@ -275,14 +275,15 @@ def collect_blast_queries(
         group_queries = set(zip(seq[valid], species[valid], strict=False))
         if group_queries:
             logger.warning(
-                "  %s: %d sequence(s) have no accession number.",
+                "  %s: %d sequence(s) have no accession number in the Excel input.",
                 group,
                 len(group_queries),
             )
         queries.update(group_queries)
     if queries:
         logger.warning(
-            "%s sequence(s) have no accession number in total.", len(queries)
+            "%s sequence(s) have no accession number in the Excel input, in total.",
+            len(queries),
         )
     return list(queries)
 
