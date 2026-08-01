@@ -15,11 +15,11 @@ if TYPE_CHECKING:
 from scripts.cache_manager import get_cache, get_missing_keys, set_cache
 from scripts.columns import CAS as CAS_COL
 from scripts.columns import CID as CID_COL
-from scripts.columns import MOLECULE
+from scripts.columns import MOLECULE, RECEPTOR_NAME, SEQUENCE, SPECIES
 from scripts.fetch_blast import (
     clear_blast_cache_entries,
-    count_uncached_blast_queries,
     get_failed_blast_queries,
+    get_new_blast_queries,
     get_successful_blast_queries,
 )
 from scripts.process_molecules import parse_cid_cell
@@ -167,39 +167,130 @@ def fetch_ncbi_data(all_uids: list[str], failed_uids: list[str]) -> list[str]:
     return still_missing
 
 
-def _print_blast_pending(
-    new_count: int,
+class _BlastCandidate:
+    def __init__(
+        self,
+        category: str,
+        seq: str,
+        species: str,
+        receptor_name: str,
+        detail: str | None = None,
+    ) -> None:
+        self.category = category
+        self.seq = seq
+        self.species = species
+        self.receptor_name = receptor_name
+        self.detail = detail
+
+    @property
+    def key(self) -> tuple[str, str]:
+        return (self.seq, self.species)
+
+
+_CATEGORY_LABELS = {
+    "new": "new",
+    "retry": "retry",
+    "no-hit": "no-hit",
+    "cached": "redo",
+}
+
+
+def _receptor_names_by_query(
+    df: pd.DataFrame, protein_groups: list[str], queries: list[tuple[str, str]]
+) -> dict[tuple[str, str], str]:
+    """Map each (sequence, species) query to a Receptor Name for display."""
+    wanted = set(queries)
+    names: dict[tuple[str, str], str] = {}
+    for group in protein_groups:
+        if group not in df.columns.get_level_values(0):
+            continue
+        sub = df[group]
+        seq = sub[SEQUENCE].astype(str).str.replace(r"\s+", "", regex=True)
+        species = sub[SPECIES].astype(str).str.strip()
+        name = sub[RECEPTOR_NAME].astype(str).str.strip()
+        for s, sp, n in zip(seq, species, name, strict=False):
+            key = (s, sp)
+            if key in wanted and key not in names:
+                names[key] = n
+    return names
+
+
+def _build_blast_candidates(
+    df: pd.DataFrame,
+    protein_groups: list[str],
+    new_queries: list[tuple[str, str]],
     retryable: list[tuple[str, str, str]],
     no_hit: list[tuple[str, str, str]],
     cached_ok: list[tuple[str, str]],
-    reused_from_cache_count: int,
-) -> None:
-    if reused_from_cache_count > 0:
+) -> list[_BlastCandidate]:
+    all_queries = (
+        new_queries
+        + [(s, sp) for s, sp, _ in retryable]
+        + [(s, sp) for s, sp, _ in no_hit]
+        + cached_ok
+    )
+    names = _receptor_names_by_query(df, protein_groups, all_queries)
+
+    candidates = [
+        _BlastCandidate("new", s, sp, names.get((s, sp), "?")) for s, sp in new_queries
+    ]
+    candidates += [
+        _BlastCandidate("retry", s, sp, names.get((s, sp), "?"), err)
+        for s, sp, err in retryable
+    ]
+    candidates += [
+        _BlastCandidate("no-hit", s, sp, names.get((s, sp), "?"), err)
+        for s, sp, err in no_hit
+    ]
+    candidates += [
+        _BlastCandidate("cached", s, sp, names.get((s, sp), "?")) for s, sp in cached_ok
+    ]
+    return candidates
+
+
+def _parse_selection(answer: str, count: int) -> list[int]:
+    """Parse "1,3-5" style input into sorted, deduplicated 1-based indices."""
+    indices: set[int] = set()
+    for part in answer.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        lo_s, _, hi_s = part.partition("-")
+        lo, hi = int(lo_s), int(hi_s) if hi_s else int(lo_s)
+        indices.update(range(lo, hi + 1))
+    return sorted(i for i in indices if 1 <= i <= count)
+
+
+def _select_blast_candidates(
+    candidates: list[_BlastCandidate],
+) -> list[_BlastCandidate]:
+    """Print the numbered pending BLAST lookups and let the user pick which
+    combination to (re-)run, instead of an all-or-nothing prompt."""
+    for i, c in enumerate(candidates, start=1):
+        seq_preview = c.seq[:12] + ("..." if len(c.seq) > 12 else "")
+        detail = f" - {c.detail}" if c.detail else ""
         logger.info(
-            "%d already resolved from BLAST cache (applied automatically, no lookup needed)",
-            reused_from_cache_count,
+            "  [%2d] %-12s %-20s %-20s %s%s",
+            i,
+            _CATEGORY_LABELS[c.category],
+            c.receptor_name[:20],
+            c.species[:20],
+            seq_preview,
+            detail,
         )
-    if new_count > 0:
-        logger.info("%d new (never queried, ~1-5 min each)", new_count)
-    for _seq, sp, err in retryable:
-        logger.info("Previously failed - (%s, %s): %s", sp, _seq[:9] + "...", err)
-    for _seq, sp, _err in no_hit:
-        logger.info("No hit found on previous attempt - (%s, %s)", sp, _seq[:9] + "...")
-    for _seq, sp in cached_ok:
-        logger.info("Cached - force re-run: (%s, %s)", sp, _seq[:9] + "...")
-
-
-def _clear_blast_entries(
-    retryable: list[tuple[str, str, str]],
-    no_hit: list[tuple[str, str, str]],
-    cached_ok: list[tuple[str, str]],
-) -> None:
-    if retryable:
-        clear_blast_cache_entries([(s, sp) for s, sp, _ in retryable])
-    if no_hit:
-        clear_blast_cache_entries([(s, sp) for s, sp, _ in no_hit])
-    if cached_ok:
-        clear_blast_cache_entries(cached_ok)
+    answer = (
+        input(
+            f'  Run which BLAST lookup(s)? (e.g. "1,3-5", "all", Enter to skip) [{len(candidates)} pending] '
+        )
+        .strip()
+        .lower()
+    )
+    if not answer:
+        return []
+    if answer == "all":
+        return candidates
+    selected = _parse_selection(answer, len(candidates))
+    return [candidates[i - 1] for i in selected]
 
 
 def fetch_genbank_data(
@@ -212,32 +303,39 @@ def fetch_genbank_data(
     if not blast_queries:
         return {}
 
-    new_count = count_uncached_blast_queries(blast_queries)
+    new_queries = get_new_blast_queries(blast_queries)
     failed: list[tuple[str, str, str]] = get_failed_blast_queries(blast_queries)
     already_resolved = get_successful_blast_queries(blast_queries)
+    # Only offered as re-runnable candidates under --force; otherwise they're
+    # applied for free below without asking (no network call needed).
     cached_ok = already_resolved if force_blast else []
 
     # "no hit found" results are definitive — no point retrying them.
     no_hit = [(s, sp, err) for s, sp, err in failed if err == "no hit found"]
     retryable = [(s, sp, err) for s, sp, err in failed if err != "no hit found"]
 
-    # Resolved from a previous run and not being forced to re-run - applied
-    # silently below, but surfaced here so "N new" isn't mistaken for the
-    # full count of sequences still missing an accession.
-    reused_from_cache = [] if force_blast else already_resolved
+    # Results already sitting in the cache are always applied, whether or not
+    # they're also offered above as re-runnable "cached" candidates - picking
+    # them there just forces a fresh BLAST query instead of reusing this.
+    queries_to_resolve: set[tuple[str, str]] = set(already_resolved)
 
-    queries_to_resolve = blast_queries
-    if new_count > 0 or failed or cached_ok:
-        _print_blast_pending(new_count, retryable, no_hit, cached_ok, len(reused_from_cache))
-        total = new_count + len(retryable) + len(no_hit) + len(cached_ok)
-        answer = input(f"  Run/retry {total} BLAST lookup(s)? [y/N] ").strip().lower()
-        if answer != "y":
+    if new_queries or failed or cached_ok:
+        if already_resolved and not force_blast:
+            logger.info(
+                "%d already resolved from BLAST cache (applied automatically, no lookup needed)",
+                len(already_resolved),
+            )
+        candidates = _build_blast_candidates(
+            df, protein_groups, new_queries, retryable, no_hit, cached_ok
+        )
+        selected = _select_blast_candidates(candidates)
+        if not selected:
             logger.info("Skipping BLAST lookups, continuing without new BLAST results.")
-            # Still apply results already sitting in the cache - they're free
-            # (no network call) and declining only concerns the pending ones.
-            queries_to_resolve = already_resolved
         else:
-            _clear_blast_entries(retryable, no_hit, cached_ok)
+            to_clear = [c.key for c in selected if c.category != "new"]
+            if to_clear:
+                clear_blast_cache_entries(to_clear)
+            queries_to_resolve.update(c.key for c in selected)
     elif already_resolved:
         logger.info(
             "All %d sequence(s) without accession resolved from BLAST cache.",
@@ -246,7 +344,9 @@ def fetch_genbank_data(
 
     if not queries_to_resolve:
         return {}
-    return resolve_missing_accessions_via_blast(df, protein_groups, queries_to_resolve)
+    return resolve_missing_accessions_via_blast(
+        df, protein_groups, list(queries_to_resolve)
+    )
 
 
 def fetch_pubchem_data(unique_cids: list[int]) -> list[int]:

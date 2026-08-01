@@ -107,10 +107,10 @@ def _run_blast_query(
     return accession, xml_path, None
 
 
-def count_uncached_blast_queries(queries: list[tuple[str, str]]) -> int:
-    """Return how many (sequence, species) pairs have never been queried."""
+def get_new_blast_queries(queries: list[tuple[str, str]]) -> list[tuple[str, str]]:
+    """Return (sequence, species) pairs that have never been queried."""
     cache = _load_blast_cache()
-    return sum(1 for seq, sp in queries if _blast_key(seq, sp) not in cache)
+    return [(seq, sp) for seq, sp in queries if _blast_key(seq, sp) not in cache]
 
 
 def get_failed_blast_queries(
