@@ -323,7 +323,13 @@ def resolve_missing_accessions_via_blast(
             continue
         sub = df[group]
         missing = sub[ACCESSION].isna() | (sub[ACCESSION].astype(str).str.strip() == "")
-        seq_col = sub.loc[missing, SEQUENCE].astype(str).str.strip()
+        # Must match collect_blast_queries' normalization exactly (full
+        # whitespace removal, not just trimming ends) - some source cells have
+        # stray internal whitespace, and a mismatched key here silently drops
+        # the fill instead of erroring.
+        seq_col = sub.loc[missing, SEQUENCE].astype(str).str.replace(
+            r"\s+", "", regex=True
+        )
         species_col = sub.loc[missing, SPECIES].astype(str).str.strip()
         pairs = zip(seq_col, species_col, strict=False)
         new_ids = pd.Series(
