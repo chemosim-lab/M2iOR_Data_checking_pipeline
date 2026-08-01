@@ -39,6 +39,17 @@ def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
         xl, sheet_name=raw_data_sheet_name, header=None, nrows=2
     )
 
+    # Some source files carry a "used range" far wider than the real data
+    # (e.g. a fill/border applied across an entire row up to column XFD) -
+    # left unbounded, openpyxl/pandas would scan millions of phantom empty
+    # cells. Bound the real read to the last column actually holding a
+    # group or a column label.
+    last_used_col = max(
+        raw_check.iloc[0].last_valid_index(),
+        raw_check.iloc[1].last_valid_index(),
+    )
+    raw_check = raw_check.iloc[:, : last_used_col + 1]
+
     # Ligne 0 : labels de groupe — forward-fill pour les cellules fusionnées
     groups = raw_check.iloc[0].ffill()
     # Ligne 1 : noms de colonnes
@@ -48,7 +59,7 @@ def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
 
     # Lire toutes les lignes sans inférence d'en-tête
     raw = pd.read_excel(  # pyright: ignore[reportUnknownMemberType]
-        xl, sheet_name=raw_data_sheet_name, header=None
+        xl, sheet_name=raw_data_sheet_name, header=None, usecols=range(last_used_col + 1)
     )
 
     # Construction du MultiIndex (groupe, colonne)
