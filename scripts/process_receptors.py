@@ -25,6 +25,11 @@ from scripts.find_protein_mutations import align_and_annotate
 
 logger = colorlog.getLogger(__name__)
 
+# Some source Excel files spell out "Not available" in the Accession column
+# instead of leaving it blank - treated as a recognized sentinel rather than
+# a real ID: propagated as-is into Sequence_ref instead of "".
+NOT_AVAILABLE = "Not available"
+
 _OR_NAME_RE = re.compile(r"^Or\d+(?:-\d+)?[a-z]?$")
 _OR_NAME_RE_LOOSE = re.compile(r"^Or(\d+)(-\d+)?([a-zA-Z]?)$", re.IGNORECASE)
 _ORCO_RE_LOOSE = re.compile(r"^Orco$", re.IGNORECASE)
@@ -352,6 +357,8 @@ def _resolve_seq_ref(
     uniprot_cache: dict[str, str | None],
 ) -> tuple[str | None, str]:
     uid_str = str(uid).strip() if pd.notna(uid) else None
+    if uid_str and uid_str.lower() == NOT_AVAILABLE.lower():
+        return NOT_AVAILABLE, "undefined"
     if uid_str and uid_str in blast_refs:
         seq_ref, database = blast_refs[uid_str], "genbank"
     elif uid_str and uid_str in ncbi_uid_set:
@@ -367,7 +374,7 @@ def _resolve_seq_ref(
 
 def _normalize_sequence(seq: Any, seq_ref: str | None) -> Any:
     seq_empty = pd.isna(seq) or not str(seq).strip()
-    if seq_ref and seq_empty:
+    if seq_ref and seq_ref != NOT_AVAILABLE and seq_empty:
         return seq_ref
     if not seq_empty:
         return "".join(str(seq).split())
@@ -378,7 +385,14 @@ def _compute_mutations(
     seq: Any,
     seq_ref: str | None,
 ) -> tuple[str | None, float | None, float | None]:
-    if seq_ref is None or pd.isna(seq) or not str(seq).strip():
+    # "Not available" is a placeholder, not a real reference sequence -
+    # aligning against it would produce meaningless mutation output.
+    if (
+        seq_ref is None
+        or seq_ref == NOT_AVAILABLE
+        or pd.isna(seq)
+        or not str(seq).strip()
+    ):
         return None, None, None
     mut_str, pid_aln, pid_short = align_and_annotate(seq, seq_ref)
     return mut_str, pid_aln, pid_short
