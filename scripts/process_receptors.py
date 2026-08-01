@@ -358,21 +358,12 @@ def _resolve_seq_ref(
     return seq_ref, database
 
 
-def _normalize_sequence(
-    df: pd.DataFrame,
-    idx: Any,
-    group: str,
-    seq: Any,
-    seq_ref: str | None,
-) -> Any:
+def _normalize_sequence(seq: Any, seq_ref: str | None) -> Any:
     seq_empty = pd.isna(seq) or not str(seq).strip()
     if seq_ref and seq_empty:
-        df.loc[idx, (group, SEQUENCE)] = seq_ref
         return seq_ref
     if not seq_empty:
-        cleaned = "".join(str(seq).split())
-        df.loc[idx, (group, SEQUENCE)] = cleaned
-        return cleaned
+        return "".join(str(seq).split())
     return seq
 
 
@@ -409,6 +400,12 @@ def enrich_with_reference_and_mutations(
         if (data := get_cache(uid, subdir="receptors")) and data.get("source") == "ncbi"
     }
 
+    # Many rows across a group share the same (accession, sequence) - e.g. one
+    # receptor tested against dozens of odorants - so memoize the expensive
+    # pairwise alignment per unique (seq, seq_ref) pair instead of recomputing
+    # it for every row.
+    mutation_cache: dict[tuple[Any, str | None], tuple[str | None, float | None, float | None]] = {}
+
     for group in groups:
         # One disk read per unique UniProt ID (GenBank IDs come from blast_refs).
         uniprot_cache: dict[str, str | None] = {
@@ -421,25 +418,31 @@ def enrich_with_reference_and_mutations(
             if uid not in blast_refs
         }
 
+        sequences: list[Any] = []
         seq_refs: list[str | None] = []
         identities: list[float | None] = []
         identities_short: list[float | None] = []
         mutations_list: list[str | None] = []
         database_list: list[str | None] = []
 
-        for idx, row in df[group].iterrows():
+        for _idx, row in df[group].iterrows():
             seq_ref, database = _resolve_seq_ref(
                 row[ACCESSION], blast_refs, ncbi_uid_set, uniprot_cache
             )
             seq_refs.append(seq_ref)
             database_list.append(database)
 
-            seq = _normalize_sequence(df, idx, group, row[SEQUENCE], seq_ref)
-            mut_str, pid_aln, pid_short = _compute_mutations(seq, seq_ref)
+            seq = _normalize_sequence(row[SEQUENCE], seq_ref)
+            sequences.append(seq)
+            cache_key = (seq, seq_ref)
+            if cache_key not in mutation_cache:
+                mutation_cache[cache_key] = _compute_mutations(seq, seq_ref)
+            mut_str, pid_aln, pid_short = mutation_cache[cache_key]
             identities.append(pid_aln)
             identities_short.append(pid_short)
             mutations_list.append(mut_str)
 
+        df.loc[:, (group, SEQUENCE)] = sequences
         df.loc[:, (group, SEQUENCE_REF)] = seq_refs
         df.loc[:, (group, IDENTITY)] = identities
         df.loc[:, (group, IDENTITY_SHORT)] = identities_short
