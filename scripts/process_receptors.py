@@ -30,6 +30,11 @@ logger = colorlog.getLogger(__name__)
 # a real ID: propagated as-is into Sequence_ref instead of "".
 NOT_AVAILABLE = "Not available"
 
+# Below this % identity to its reference sequence, a receptor is flagged for
+# manual review - could be a mislabeled species, a wrong reference match, or
+# a genuinely divergent sequence worth double-checking.
+IDENTITY_WARNING_THRESHOLD = 95.0
+
 _OR_NAME_RE = re.compile(r"^Or\d+(?:-\d+)?[a-z]?$")
 _OR_NAME_RE_LOOSE = re.compile(r"^Or(\d+)(-\d+)?([a-zA-Z]?)$", re.IGNORECASE)
 _ORCO_RE_LOOSE = re.compile(r"^Orco$", re.IGNORECASE)
@@ -456,12 +461,31 @@ def enrich_with_reference_and_mutations(
             seq = _normalize_sequence(row[SEQUENCE], seq_ref)
             sequences.append(seq)
             cache_key = (seq, seq_ref)
-            if cache_key not in mutation_cache:
+            is_new_pair = cache_key not in mutation_cache
+            if is_new_pair:
                 mutation_cache[cache_key] = _compute_mutations(seq, seq_ref)
             mut_str, pid_aln, pid_short = mutation_cache[cache_key]
             identities.append(pid_aln)
             identities_short.append(pid_short)
             mutations_list.append(mut_str)
+
+            # Warn once per unique (sequence, reference) pair, not once per row -
+            # the same receptor is typically tested against many odorants.
+            if (
+                is_new_pair
+                and pid_aln is not None
+                and pid_aln < IDENTITY_WARNING_THRESHOLD
+            ):
+                logger.warning(
+                    "  %s: %s (%s, accession=%s) has %.2f%% identity to its "
+                    "reference sequence, below the %g%% threshold.",
+                    group,
+                    row[RECEPTOR_NAME],
+                    row[SPECIES],
+                    row[ACCESSION],
+                    pid_aln,
+                    IDENTITY_WARNING_THRESHOLD,
+                )
 
         df.loc[:, (group, SEQUENCE)] = sequences
         df.loc[:, (group, SEQUENCE_REF)] = seq_refs
