@@ -215,21 +215,27 @@ def fetch_genbank_data(
     no_hit = [(s, sp, err) for s, sp, err in failed if err == "no hit found"]
     retryable = [(s, sp, err) for s, sp, err in failed if err != "no hit found"]
 
+    queries_to_resolve = blast_queries
     if new_count > 0 or failed or cached_ok:
         _print_blast_pending(new_count, retryable, no_hit, cached_ok)
         total = new_count + len(retryable) + len(no_hit) + len(cached_ok)
         answer = input(f"  Run/retry {total} BLAST lookup(s)? [y/N] ").strip().lower()
         if answer != "y":
             logger.info("Skipping BLAST lookups, continuing without new BLAST results.")
-            return {}
-        _clear_blast_entries(retryable, no_hit, cached_ok)
+            # Still apply results already sitting in the cache - they're free
+            # (no network call) and declining only concerns the pending ones.
+            queries_to_resolve = already_resolved
+        else:
+            _clear_blast_entries(retryable, no_hit, cached_ok)
     elif already_resolved:
         logger.info(
             "All %d sequence(s) without accession resolved from BLAST cache.",
             len(already_resolved),
         )
 
-    return resolve_missing_accessions_via_blast(df, protein_groups, blast_queries)
+    if not queries_to_resolve:
+        return {}
+    return resolve_missing_accessions_via_blast(df, protein_groups, queries_to_resolve)
 
 
 def fetch_pubchem_data(unique_cids: list[int]) -> list[int]:
