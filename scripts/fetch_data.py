@@ -415,7 +415,8 @@ def fetch_pubchem_data(unique_cids: list[int]) -> list[int]:
                 time.sleep(_REQUEST_DELAY)
     elif unique_cids:
         logger.info(
-            "All %d CID(s) found in cache, skipping API calls.", len(unique_cids)
+            "All %d PubChem compound record(s) already cached, skipping API calls.",
+            len(unique_cids),
         )
 
     return failed
@@ -486,7 +487,7 @@ def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
                 time.sleep(_REQUEST_DELAY)
     elif unique_cas:
         logger.info(
-            "All %d CAS number(s) found in cache, skipping API calls.",
+            "All %d CAS→CID mapping(s) already cached, skipping API calls.",
             len(unique_cas),
         )
 
