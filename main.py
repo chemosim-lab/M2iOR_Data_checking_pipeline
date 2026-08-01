@@ -60,6 +60,7 @@ from scripts.process_responses import (
     validate_stimulation_flux_unit_column,
     validate_unit_column,
     validate_value_column,
+    validate_value_nature_column,
 )
 from scripts.process_sources import (
     enrich_reference_column,
@@ -188,6 +189,7 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         validate_responsive_column(df)
         validate_parameter_column(df)
         validate_value_column(df)
+        validate_value_nature_column(df)
         validate_unit_column(df)
         validate_concentration_column(df)
         validate_concentration_unit_column(df)
