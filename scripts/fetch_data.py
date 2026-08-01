@@ -23,7 +23,7 @@ from scripts.fetch_blast import (
     get_successful_blast_queries,
 )
 from scripts.process_molecules import parse_cid_cell
-from scripts.process_receptors import resolve_missing_accessions_via_blast
+from scripts.process_receptors import NOT_AVAILABLE, resolve_missing_accessions_via_blast
 
 logger = colorlog.getLogger(__name__)
 
@@ -72,11 +72,27 @@ def fetch_uniprot_data(unique_accessions: list[str]) -> list[str]:
     to_fetch = get_missing_keys(unique_accessions, subdir="receptors")
     failed: list[str] = []
 
+    # The "Not available" sentinel is never a real accession - sending it to
+    # UniProt/NCBI only produces a confusing "invalid format" error. Route it
+    # straight to `failed` (and thus the BLAST-on-sequence fallback) instead.
+    sentinel_values = [a for a in to_fetch if a.lower() == NOT_AVAILABLE.lower()]
+    if sentinel_values:
+        to_fetch = [a for a in to_fetch if a.lower() != NOT_AVAILABLE.lower()]
+        failed.extend(sentinel_values)
+        logger.info(
+            '  %d accession(s) marked "%s" - skipping UniProt/NCBI lookup, '
+            "falling back to BLAST on sequence.",
+            len(sentinel_values),
+            NOT_AVAILABLE,
+        )
+
+    already_cached = len(unique_accessions) - len(to_fetch) - len(sentinel_values)
+
     if to_fetch:
         logger.info(
             "Fetching %d new accession(s) from UniProt (%d already cached)...",
             len(to_fetch),
-            len(unique_accessions) - len(to_fetch),
+            already_cached,
         )
         for i, accession in enumerate(to_fetch, start=1):
             accession_data: Any | None = _fetch_data(accession)
@@ -90,10 +106,10 @@ def fetch_uniprot_data(unique_accessions: list[str]) -> list[str]:
 
             if i < len(to_fetch):
                 time.sleep(_REQUEST_DELAY)
-    elif unique_accessions:
+    elif already_cached:
         logger.info(
             "All %d unique accession(s) found in cache, skipping API calls.",
-            len(unique_accessions),
+            already_cached,
         )
 
     return failed
@@ -155,6 +171,10 @@ def fetch_ncbi_data(all_uids: list[str], failed_uids: list[str]) -> list[str]:
 
     still_missing: list[str] = []
     for accession in failed_uids:
+        if accession.lower() == NOT_AVAILABLE.lower():
+            # Already logged once in fetch_uniprot_data - no real ID to try here.
+            still_missing.append(accession)
+            continue
         if accession in ncbi_refs:
             continue  # already in cache from a previous run
         data = _fetch_ncbi_protein(accession)
