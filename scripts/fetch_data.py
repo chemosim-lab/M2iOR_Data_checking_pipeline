@@ -172,7 +172,13 @@ def _print_blast_pending(
     retryable: list[tuple[str, str, str]],
     no_hit: list[tuple[str, str, str]],
     cached_ok: list[tuple[str, str]],
+    reused_from_cache_count: int,
 ) -> None:
+    if reused_from_cache_count > 0:
+        logger.info(
+            "%d already resolved from BLAST cache (applied automatically, no lookup needed)",
+            reused_from_cache_count,
+        )
     if new_count > 0:
         logger.info("%d new (never queried, ~1-5 min each)", new_count)
     for _seq, sp, err in retryable:
@@ -215,9 +221,14 @@ def fetch_genbank_data(
     no_hit = [(s, sp, err) for s, sp, err in failed if err == "no hit found"]
     retryable = [(s, sp, err) for s, sp, err in failed if err != "no hit found"]
 
+    # Resolved from a previous run and not being forced to re-run - applied
+    # silently below, but surfaced here so "N new" isn't mistaken for the
+    # full count of sequences still missing an accession.
+    reused_from_cache = [] if force_blast else already_resolved
+
     queries_to_resolve = blast_queries
     if new_count > 0 or failed or cached_ok:
-        _print_blast_pending(new_count, retryable, no_hit, cached_ok)
+        _print_blast_pending(new_count, retryable, no_hit, cached_ok, len(reused_from_cache))
         total = new_count + len(retryable) + len(no_hit) + len(cached_ok)
         answer = input(f"  Run/retry {total} BLAST lookup(s)? [y/N] ").strip().lower()
         if answer != "y":
