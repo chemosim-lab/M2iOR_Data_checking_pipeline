@@ -421,6 +421,9 @@ def fetch_pubchem_data(unique_cids: list[int]) -> list[int]:
     return failed
 
 
+_CAS_CACHE_SUBDIR = "cas_to_cid"
+
+
 def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
     """For Molecule rows with an empty CID, look up the CID via CAS on PubChem.
     Updates the CID column in df. Returns the list of newly found CIDs."""
@@ -434,44 +437,63 @@ def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
     if cas_series.empty:
         return []
 
-    unique_cas = cas_series.unique().tolist()
-    cas_to_cid: dict[str, int] = {}
+    unique_cas = [str(cas) for cas in cas_series.unique().tolist()]
+    cas_to_cid: dict[str, int] = {
+        cas: cid
+        for cas in unique_cas
+        if (cached := get_cache(cas, subdir=_CAS_CACHE_SUBDIR)) is not None
+        and (cid := cached.get("cid")) is not None
+    }
 
-    logger.info(
-        "CID fallback: querying %d CAS number(s) on PubChem...", len(unique_cas)
-    )
-    for i, cas in enumerate(unique_cas, start=1):
-        try:
-            response = requests.get(_PUBCHEM_CAS_CID_URL.format(cas=cas), timeout=10)
-            if response.status_code == _HTTP_OK:
-                cids = response.json().get("IdentifierList", {}).get("CID", [])
-                if cids:
-                    cas_to_cid[cas] = cids[0]
-                    logger.info(
-                        "  [%d/%d] CAS:%s ... CID:%s", i, len(unique_cas), cas, cids[0]
-                    )
+    to_fetch = get_missing_keys(unique_cas, subdir=_CAS_CACHE_SUBDIR)
+    if to_fetch:
+        logger.info(
+            "CID fallback: querying %d CAS number(s) on PubChem (%d already cached)...",
+            len(to_fetch),
+            len(unique_cas) - len(to_fetch),
+        )
+        for i, cas in enumerate(to_fetch, start=1):
+            try:
+                response = requests.get(_PUBCHEM_CAS_CID_URL.format(cas=cas), timeout=10)
+                if response.status_code == _HTTP_OK:
+                    cids = response.json().get("IdentifierList", {}).get("CID", [])
+                    cid = cids[0] if cids else None
+                    # A confirmed empty result is definitive and worth caching;
+                    # a non-200 or network error may be transient, so it's left
+                    # uncached and retried on the next run.
+                    set_cache(cas, {"cid": cid}, subdir=_CAS_CACHE_SUBDIR)
+                    if cid:
+                        cas_to_cid[cas] = cid
+                        logger.info(
+                            "  [%d/%d] CAS:%s ... CID:%s", i, len(to_fetch), cas, cid
+                        )
+                    else:
+                        logger.info(
+                            "  [%d/%d] CAS:%s ... not found", i, len(to_fetch), cas
+                        )
                 else:
                     logger.info(
-                        "  [%d/%d] CAS:%s ... not found", i, len(unique_cas), cas
+                        "  [%d/%d] CAS:%s ... not found (HTTP %d)",
+                        i,
+                        len(to_fetch),
+                        cas,
+                        response.status_code,
                     )
-            else:
-                logger.info(
-                    "  [%d/%d] CAS:%s ... not found (HTTP %d)",
-                    i,
-                    len(unique_cas),
-                    cas,
-                    response.status_code,
-                )
-        except requests.RequestException as e:
-            logger.info("  [%d/%d] CAS:%s ... error: %s", i, len(unique_cas), cas, e)
+            except requests.RequestException as e:
+                logger.info("  [%d/%d] CAS:%s ... error: %s", i, len(to_fetch), cas, e)
 
-        if i < len(unique_cas):
-            time.sleep(_REQUEST_DELAY)
+            if i < len(to_fetch):
+                time.sleep(_REQUEST_DELAY)
+    elif unique_cas:
+        logger.info(
+            "All %d CAS number(s) found in cache, skipping API calls.",
+            len(unique_cas),
+        )
 
     if not cas_to_cid:
         return []
 
-    updated = cas_series.map(cas_to_cid)
+    updated = cas_series.astype(str).map(cas_to_cid)
     mask = updated.notna()
     df.loc[updated.index[mask], (MOLECULE, CID_COL)] = (
         updated[mask].astype(int).to_numpy()
