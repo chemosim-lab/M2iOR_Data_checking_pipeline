@@ -4,6 +4,7 @@ import argparse
 import logging
 import sys
 import warnings
+from datetime import datetime
 from pathlib import Path
 from typing import TYPE_CHECKING, cast
 
@@ -69,7 +70,12 @@ from scripts.process_sources import (
     validate_doi_column,
 )
 from scripts.read_excel import get_raw_data_from_excel_file
-from scripts.registry import ProcessingStatus, StudyFileTracker, StudyProcessingRegistry
+from scripts.registry import (
+    ProcessingStatus,
+    StudyFileTracker,
+    StudyProcessingRegistry,
+    compute_file_hash,
+)
 
 if TYPE_CHECKING:
     from pandas import DataFrame
@@ -212,6 +218,7 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         export_to_csv(df, output_path / f"{study_id}.csv")
 
         study_tracker.complete()
+        study_tracker.file_hash = compute_file_hash(excel_path)
         print(f"✓ {study_id}")
 
     except ValueError as er:
@@ -219,6 +226,83 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         study_tracker.fail(error_message=str(er))
 
     registry.save(REGISTRY_FILE)
+
+
+def _parse_index_selection(answer: str, count: int) -> list[int]:
+    """Parse "1,3-5" style input into sorted, deduplicated 1-based indices."""
+    indices: set[int] = set()
+    for part in answer.split(","):
+        part = part.strip()
+        if not part:
+            continue
+        lo_s, _, hi_s = part.partition("-")
+        lo, hi = int(lo_s), int(hi_s) if hi_s else int(lo_s)
+        indices.update(range(lo, hi + 1))
+    return sorted(i for i in indices if 1 <= i <= count)
+
+
+def scan_and_select(
+    registry: StudyProcessingRegistry, input_path: Path
+) -> list[Path]:
+    """List Excel files under input_path, newest-modified first, highlighting
+    which ones are new or changed (by content hash) since their last
+    successful run, then let the user pick which ones to process."""
+    excel_paths = sorted(
+        input_path.glob("**/*.xlsx"), key=lambda p: p.stat().st_mtime, reverse=True
+    )
+    if not excel_paths:
+        print(f"No Excel files found under {input_path}")
+        return []
+
+    entries: list[tuple[Path, datetime, str]] = []
+    for excel_path in excel_paths:
+        study_id = excel_path.stem
+        file_hash = compute_file_hash(excel_path)
+        mtime = datetime.fromtimestamp(excel_path.stat().st_mtime)
+        if study_id not in registry:
+            status = "NEW"
+        else:
+            tracker = registry.get(study_id)
+            status = "UNCHANGED" if tracker.file_hash == file_hash else "MODIFIED"
+        entries.append((excel_path, mtime, status))
+
+    to_update: list[int] = []
+    for i, (excel_path, mtime, status) in enumerate(entries, start=1):
+        line = f"[{i:3d}] {mtime:%Y-%m-%d %H:%M}  {excel_path.name}"
+        if status == "NEW":
+            logger.info("→ %s  (NEW)", line)
+            to_update.append(i)
+        elif status == "MODIFIED":
+            logger.warning("→ %s  (MODIFIED)", line)
+            to_update.append(i)
+        else:
+            print(f"    {line}")
+
+    if not to_update:
+        print("\nAll files are up to date.")
+        return []
+
+    default = ",".join(str(i) for i in to_update)
+    print(f"\n{len(to_update)} file(s) new or modified.")
+    answer = (
+        input(
+            f'Process which file(s)? ("1,3-5", "all", Enter for [{default}], '
+            'or "none") '
+        )
+        .strip()
+        .lower()
+    )
+
+    if answer in ("none", "n"):
+        selected = []
+    elif not answer:
+        selected = to_update
+    elif answer == "all":
+        selected = list(range(1, len(entries) + 1))
+    else:
+        selected = _parse_index_selection(answer, len(entries))
+
+    return [entries[i - 1][0] for i in selected]
 
 
 _LOG_COLORS = {
@@ -256,6 +340,12 @@ if __name__ == "__main__":
     )
     _ = parser.add_argument("--file", help="Process a single Excel file")
     _ = parser.add_argument(
+        "--scan",
+        action="store_true",
+        help="List Excel files (newest first), highlight new/modified ones "
+        "by content hash, and choose which to process",
+    )
+    _ = parser.add_argument(
         "--pending", action="store_true", help="Process all pending Excel files"
     )
     _ = parser.add_argument(
@@ -280,6 +370,7 @@ if __name__ == "__main__":
     # Typed extraction of arguments (argparse returns a Namespace whose attributes are typed as Any)
     show_status = cast(bool, args.status)
     file_arg = cast(str | None, args.file)
+    do_scan = cast(bool, args.scan)
     do_pending = cast(bool, args.pending)
     do_retry = cast(bool, args.retry)
     do_all = cast(bool, args.all)
@@ -293,6 +384,13 @@ if __name__ == "__main__":
 
     if show_status:
         print(registry.summary)
+    elif do_scan:
+        selected_paths = scan_and_select(registry, input_path)
+        if selected_paths:
+            print(f"\nProcessing {len(selected_paths)} file(s)...")
+            for excel_file_path in selected_paths:
+                print(f"File: {excel_file_path}")
+                process_raw_excel_file(excel_file_path)
     elif file_arg is not None:
         process_raw_excel_file(Path(file_arg))
     elif do_retry:

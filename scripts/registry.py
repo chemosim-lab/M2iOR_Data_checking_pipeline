@@ -1,5 +1,6 @@
 # pipeline/scripts/registry.py
 
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import datetime
@@ -14,6 +15,16 @@ class ProcessingStatus(Enum):
     DONE = auto()
 
 
+def compute_file_hash(path: Path) -> str:
+    """SHA-256 of a file's contents, used to detect Excel files that changed
+    on the NAS since they were last successfully processed."""
+    digest = hashlib.sha256()
+    with path.open("rb") as f:
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 @dataclass
 class StudyFileTracker:
     study_id: str
@@ -21,6 +32,10 @@ class StudyFileTracker:
     status: ProcessingStatus = ProcessingStatus.PENDING
     processed_at: datetime | None = None
     error_message: str | None = None
+    # Hash of file_path's contents as of the last successful processing.
+    # None for studies registered before hash tracking existed, or that have
+    # never completed successfully.
+    file_hash: str | None = None
 
     def complete(self):
         self.status = ProcessingStatus.DONE
@@ -40,6 +55,7 @@ class StudyFileTracker:
             if self.processed_at
             else None,
             "error_message": self.error_message,
+            "file_hash": self.file_hash,
         }
 
     @classmethod
@@ -52,6 +68,7 @@ class StudyFileTracker:
             if data["processed_at"]
             else None,
             error_message=data["error_message"],
+            file_hash=data.get("file_hash"),
         )
 
 
