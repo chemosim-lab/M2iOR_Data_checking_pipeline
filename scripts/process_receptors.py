@@ -198,6 +198,11 @@ def enrich_species_column(
         except (KeyError, TypeError):
             continue
 
+    # Warn once per unique (accession, reported species) pair, not once per
+    # row - the same mistyped/wrong accession is typically repeated across
+    # dozens of rows.
+    warned: set[tuple[str, str]] = set()
+
     for group in groups:
         uid_col = df[group][ACCESSION].astype(str).str.strip()
         updated = uid_col.map(species_by_uid)
@@ -213,6 +218,10 @@ def enrich_species_column(
         has_reported = reported_raw.notna() & (reported != "")
         mismatch = mask & has_reported & (reported.str.lower() != updated.str.lower())
         for idx in df.index[mismatch]:
+            key = (uid_col[idx], reported[idx])
+            if key in warned:
+                continue
+            warned.add(key)
             logger.warning(
                 "  %s row %s: accession %s maps to UniProt species %r, "
                 "which differs from the reported species %r - overwriting.",
