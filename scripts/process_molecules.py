@@ -6,11 +6,7 @@ import pandas as pd
 
 from scripts.cache_manager import get_cache
 from scripts.columns import CAS, CID, INCHIKEY, MIXTURE, MOLECULE, MOLECULE_NAME, SMILES
-from scripts.molecule_stereo import (
-    MONOMOLECULAR,
-    SUM_OF_ISOMERS,
-    export_stereo_classification,
-)
+from scripts.molecule_stereo import export_stereo_classification
 
 _CAS_RE = re.compile(r"^\d{2,7}-\d{2}-\d$")
 _CID_TOKEN_RE = re.compile(r"^\d+(?:\.\d+)?$")
@@ -140,15 +136,20 @@ def _join_values(cids: list[int], mapping: dict[int, str]) -> str | None:
 
 
 def _aggregate_mixture(cids: list[int], mapping: dict[int, str]) -> str | None:
-    """Aggregate the per-CID stereo classification of a (possibly multi-CID) row.
+    """Derive the row-level Mixture label for a (possibly multi-CID) row.
 
-    A row is "sum of isomers" as soon as one of its components is, otherwise
-    "monomolecular". Returns None if no CID in the row could be classified.
+    A row naming more than one CID explicitly lists distinct compounds and is
+    always "mixture", regardless of each component's own stereochemistry. A
+    single-CID row falls back to that compound's stereo classification
+    ("sum of isomers" if its stereochemistry is undefined, "monomolecular"
+    otherwise). Returns None only when a single-CID row's compound could not
+    be classified (e.g. no cached SMILES).
     """
-    statuses = [mapping[c] for c in cids if c in mapping]
-    if not statuses:
+    if len(cids) > 1:
+        return "mixture"
+    if not cids or cids[0] not in mapping:
         return None
-    return SUM_OF_ISOMERS if SUM_OF_ISOMERS in statuses else MONOMOLECULAR
+    return mapping[cids[0]]
 
 
 def _extract_cid_lists(df: pd.DataFrame) -> tuple[pd.Series, list[int]]:
@@ -189,7 +190,7 @@ def _enrich_molecule_columns(
 def _enrich_mixture_column(
     df: pd.DataFrame, cid_lists: pd.Series, mixture_map: dict[int, str]
 ) -> None:
-    """Set Mixture from the SMILES-based stereo classification.
+    """Set Mixture from the CID count and SMILES-based stereo classification.
 
     Rows explicitly curated as "mixture" (an actual mix of several named
     compounds, see `validate_cid_or_cas`) are left untouched.
