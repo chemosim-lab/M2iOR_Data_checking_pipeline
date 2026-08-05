@@ -235,9 +235,9 @@
     "study_id": "Slone_PNAS-2017",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Slone_PNAS-2017.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:50:23.824433",
+    "processed_at": "2026-08-04T01:14:43.478348",
     "error_message": null,
-    "file_hash": "017430c6d4e05a51e80471cd7932c0b15790cd5ad901ed16f8853902c3c0cd83"
+    "file_hash": "ce4b28124e4c51a001d2647fb1604f6eb63d29dbc884198539cca3ce8fbe7f8b"
   },
   {
     "study_id": "Van_der_Goes_van_Naters_et.al._2007",
@@ -291,8 +291,16 @@
     "study_id": "Hou_MolBioEvol_2021",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Hou_MolBioEvol_2021.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:48:27.468981",
+    "processed_at": "2026-08-03T03:14:30.561709",
     "error_message": null,
-    "file_hash": "e31b1aa749a14cfed63c6d38d965d9ed3aa8cbe15c0a86c01e7cb59265e01ac8"
+    "file_hash": "7353dc000f7ce67910d96c15e19379e0053e12304dea9a9869be597f4bfae4e1"
+  },
+  {
+    "study_id": "Yuvaraj_2024",
+    "file_path": "/home/andre/Dev/m2ior_input_2026_08_04/Yuvaraj_2024.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-08-05T21:42:01.827138",
+    "error_message": null,
+    "file_hash": "cd264d84bb680c8abed7f85f9e6002a5c63510e9259dae3f2d522c00438e4706"
   }
 ]
