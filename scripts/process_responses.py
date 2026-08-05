@@ -18,7 +18,7 @@ from scripts.columns import (
 
 _ALLOWED_PARAMETERS = {"primary", "secondary", "dose-response"}
 _ALLOWED_VALUE_NATURES = {"raw", "norm_rec", "norm_pair", "norm_other", "ec50"}
-_ALLOWED_UNITS = {"na", "mol/l", "spikes/s", "v/v", "ug/ul", "um", "m", "percent"}
+_ALLOWED_UNITS = {"na", "mol/l", "spikes/s", "v/v", "ug/ul", "um", "m", "percent", "%δ fluorescence"}
 _ALLOWED_CONCENTRATION_UNITS = {
     "v/v",
     "m",
@@ -30,6 +30,7 @@ _ALLOWED_CONCENTRATION_UNITS = {
     "ug",
     "mg",
     "nmol",
+    "nm",
 }
 _ALLOWED_STIMULATION_FLUX_UNITS = {"ml/s", "l/min", "ml/min"}
 _ALLOWED_STIMULATION_DURATION_UNITS = {"ms", "s"}
@@ -40,6 +41,7 @@ _ALLOWED_EXPERIMENTAL_TECHNIQUES = {
     "fluorescence",
     "door 2.0",
     "electroantennography",
+    "hek293",
 }
 
 
