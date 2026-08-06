@@ -43,8 +43,14 @@ This creates the `.venv` and installs every dependency pinned in `uv.lock`.
 Receptor mutation analysis (`scripts/find_protein_mutations.py`) and the BLAST fallback (`scripts/fetch_blast.py`) require a local BLAST installation:
 
 ```bash
-./scripts/install_blast.sh
+./scripts/install_blast.sh          # Linux/macOS
 ```
+
+```powershell
+.\scripts\install_blast.ps1          # Windows (PowerShell)
+```
+
+Both fetch NCBI's official prebuilt `blastp` binary and drop it into the venv (`.venv/bin` / `.venv\Scripts`) — no distro/system package, no admin rights. Re-run after any `uv sync` that recreates `.venv` from scratch.
 
 ### Running the pipeline
 

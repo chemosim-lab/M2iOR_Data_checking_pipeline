@@ -87,18 +87,22 @@ def _make_aligner() -> Align.PairwiseAligner:
 
 def _blastp_path() -> str:
     """
-    Locate the blastp binary: first the current venv's bin/ (where
-    `scripts/install_blast.sh` puts it), falling back to PATH.
+    Locate the blastp binary: first the current venv's bin/ (Scripts/ on
+    Windows) - where `scripts/install_blast.sh` / `install_blast.ps1` put it
+    - falling back to PATH.
     """
-    venv_blastp = Path(sys.prefix) / "bin" / "blastp"
+    bin_dir = "Scripts" if sys.platform == "win32" else "bin"
+    exe_name = "blastp.exe" if sys.platform == "win32" else "blastp"
+    venv_blastp = Path(sys.prefix) / bin_dir / exe_name
     if venv_blastp.exists():
         return str(venv_blastp)
     found = shutil.which("blastp")
     if found:
         return found
     msg = (
-        "blastp introuvable (ni dans .venv/bin, ni dans le PATH). "
-        "Lancer scripts/install_blast.sh pour l'installer."
+        "blastp not found (neither in the venv nor on PATH). "
+        "Run scripts/install_blast.sh (Linux/macOS) or "
+        "scripts/install_blast.ps1 (Windows) to install it."
     )
     raise RuntimeError(msg)
 
