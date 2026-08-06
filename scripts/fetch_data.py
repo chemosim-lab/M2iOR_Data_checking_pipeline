@@ -59,8 +59,20 @@ def _fetch_data(accession: str) -> Any | None:
                 response.json()["messages"],
             )
             return None
-        else:
-            return json_data if json_data else None
+        if json_data and "sequence" not in json_data:
+            # Entry exists but is inactive (deleted/merged/demerged) - UniProt
+            # returns 200 with an `inactiveReason` instead of a sequence. Treat
+            # it like "not found" so it isn't cached as a usable reference and
+            # falls through to the NCBI/BLAST fallback instead.
+            reason = json_data.get("inactiveReason", {}).get(
+                "inactiveReasonType", "unknown"
+            )
+            logger.info(
+                "  [UniProt] %s is inactive (%s), no sequence available",
+                accession,
+                reason,
+            )
+            return None
     except requests.RequestException as e:
         logger.info("  [UniProt] Failed to fetch %s: %s", accession, e)
         return None

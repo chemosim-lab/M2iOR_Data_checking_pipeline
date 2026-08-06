@@ -445,7 +445,10 @@ def enrich_with_reference_and_mutations(
         # One disk read per unique UniProt ID (GenBank IDs come from blast_refs).
         uniprot_cache: dict[str, str | None] = {
             uid: (
-                data["sequence"]["value"]
+                # Cached entries can lack a "sequence" (e.g. an inactive/deleted
+                # UniProt accession fetched before that case was filtered out) -
+                # fall back to None rather than crashing on a missing key.
+                data.get("sequence", {}).get("value")
                 if (data := get_cache(uid, subdir="receptors"))
                 else None
             )
