@@ -14,3 +14,9 @@ __pycache__/
 
 # uv
 .python-version
+
+
+# Graphify personnal usage for the moment
+.claude/
+CLAUDE.md
+graphify-out/
