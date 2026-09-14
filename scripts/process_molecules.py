@@ -205,6 +205,57 @@ def _enrich_mixture_column(
         df.loc[computed.index[mask], (MOLECULE, MIXTURE)] = computed[mask].to_numpy()
 
 
+def validate_molecule_name_column(
+    df: pd.DataFrame,
+    cid_lists: pd.Series,
+    name_map: dict[int, str],
+    synonym_map: dict[int, list[str]],
+) -> None:
+    """Raise ValueError if a row's Molecule Name isn't among its CID(s)' PubChem
+    name or synonyms.
+
+    Compares the original (pre-enrichment) Molecule Name against the pooled
+    {record title, synonyms} of every CID listed on that row, case-insensitively.
+    A multi-CID row's Name is split the same way as its CID cell (on 'and'/commas)
+    and each part is checked against the row's pooled candidates. Rows without a
+    Molecule Name, or whose CID(s) have no cached name/synonyms to compare
+    against, are skipped.
+    """
+    name_col = df[MOLECULE][MOLECULE_NAME]
+    mismatches: list[tuple[int, str]] = []
+
+    for idx, cids in cid_lists.items():
+        raw_name = name_col.get(idx)
+        if pd.isna(raw_name) or not str(raw_name).strip():
+            continue
+
+        candidates: set[str] = set()
+        for cid in cids:
+            if cid in name_map:
+                candidates.add(name_map[cid].strip().lower())
+            candidates.update(s.strip().lower() for s in synonym_map.get(cid, []))
+        if not candidates:
+            continue  # nothing cached to compare against
+
+        parts = [
+            p.strip()
+            for p in re.sub(r"\band\b", ",", str(raw_name), flags=re.IGNORECASE).split(
+                ","
+            )
+            if p.strip()
+        ]
+        if any(part.lower() not in candidates for part in parts):
+            mismatches.append((idx, str(raw_name)))
+
+    if mismatches:
+        rows = ", ".join(f"{idx} ({name!r})" for idx, name in mismatches)
+        msg = (
+            f"Column '{MOLECULE_NAME}' has value(s) not found among the "
+            f"corresponding CID's PubChem name/synonyms at row(s): {rows}"
+        )
+        raise ValueError(msg)
+
+
 def _export_synonyms_csv(synonym_map: dict[int, list[str]], output_dir: Path) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     for cid, synonyms in synonym_map.items():
@@ -218,6 +269,7 @@ def process_molecules(df: pd.DataFrame, output_dir: Path, images_dir: Path) -> N
     name_map, cas_map, inchikey_map, smiles_map, synonym_map = _parse_cid_cache(
         unique_cids
     )
+    validate_molecule_name_column(df, cid_lists, name_map, synonym_map)
     _enrich_molecule_columns(df, cid_lists, name_map, cas_map, inchikey_map, smiles_map)
     _export_synonyms_csv(synonym_map, output_dir)
 
