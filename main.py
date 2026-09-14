@@ -106,6 +106,7 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
     try:
         # 1. Read and clean the Excel file
         df: DataFrame = get_raw_data_from_excel_file(excel_path)
+        input_row_count: int = len(df)
 
         # ----------------------------------------------------------------------
         # EXCEL GROUPS ---------------------------------------------------------
@@ -213,6 +214,18 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         unique_dois: list[str] = get_unique_dois(df)
         fetch_apa_references(unique_dois)
         enrich_reference_column(df)
+
+        # Safety net: no processing step should ever grow the number of rows
+        # (e.g. an unintended merge/cross-product) — the CSV must have at
+        # most as many data rows as the Excel input had.
+        output_row_count = len(df)
+        if output_row_count > input_row_count:
+            msg = (
+                f"Row count mismatch: CSV output would have {output_row_count} "
+                f"rows, more than the {input_row_count} rows read from the "
+                "Excel input."
+            )
+            raise ValueError(msg)
 
         # Export enriched dataset as CSV with two-row (group / column) header
         export_to_csv(df, output_path / f"{study_id}.csv")
