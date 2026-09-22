@@ -11,9 +11,9 @@
     "study_id": "deFouchier_NatCommun-2017",
     "file_path": "input/clean_Seb/deFouchier_NatCommun-2017.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:49:28.194167",
+    "processed_at": "2026-09-14T14:21:47.129670",
     "error_message": null,
-    "file_hash": "4a0877a0771d119f96cb96b546206375b81704902a31a58e0eebb9a08a77e435"
+    "file_hash": "8b76e4c146399f5b1d100dcaa9b79df1c1815bf8d19dd793347bcde9c07925d0"
   },
   {
     "study_id": "03_ThanetP_data_complete",
@@ -35,7 +35,7 @@
     "study_id": "Yan_jinphys-2015",
     "file_path": "input/clean_Seb/Yan_jinphys-2015.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:52:13.583703",
+    "processed_at": "2026-09-14T12:37:56.037506",
     "error_message": null,
     "file_hash": "e601d7c68ce8cc87fb4077bc7f6b51eaf72d86b90239c16506e80ab6a9c6bb20"
   },
@@ -43,7 +43,7 @@
     "study_id": "Mo_JAFC-2023",
     "file_path": "input/clean_Seb/Mo_JAFC-2023.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:50:39.052071",
+    "processed_at": "2026-09-14T12:37:50.535515",
     "error_message": null,
     "file_hash": "07554d602216ffbe0970b67f53ef6733067687cada0ba7628dd53f5acc13647b"
   },
@@ -67,7 +67,7 @@
     "study_id": "Mathew_PNAS-2013",
     "file_path": "input/clean_Seb/Mathew_PNAS-2013.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:50:32.705892",
+    "processed_at": "2026-09-14T12:37:47.101791",
     "error_message": null,
     "file_hash": "5015783f3b9221a9c8cc72920f63b3f0a9b25879ffd9749a456f135496291550"
   },
@@ -75,7 +75,7 @@
     "study_id": "Tanaka_CurrBiol-2009",
     "file_path": "input/clean_Seb/Tanaka_CurrBiol-2009.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:49:58.605342",
+    "processed_at": "2026-09-14T12:37:34.079350",
     "error_message": null,
     "file_hash": "07ca968cf1afe4e972e938588833d58a289985654763e878defeff195a099eff"
   },
@@ -83,7 +83,7 @@
     "study_id": "Wang_PNAS-2010",
     "file_path": "input/clean_Seb/Wang_PNAS-2010.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:52:45.439857",
+    "processed_at": "2026-09-14T12:38:08.252167",
     "error_message": null,
     "file_hash": "53ab8429898627d731b66502f08d26ad868c7066fbfb7fe7e1d24f77ef007102"
   },
@@ -91,9 +91,9 @@
     "study_id": "deFouchier_FrontEcolEvol-2015",
     "file_path": "input/clean_Seb/deFouchier_FrontEcolEvol-2015.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:49:30.413144",
+    "processed_at": "2026-09-14T14:21:48.461317",
     "error_message": null,
-    "file_hash": "8ff65368a42bf139c21ecfbab862b84de85bf0e6ebc3c14e54d59e1987b72125"
+    "file_hash": "932a7b3b1b4ea3e56eee8d132f01a352b7bd4dc830aec05ac448b75440b5bc4e"
   },
   {
     "study_id": "test",
@@ -107,15 +107,15 @@
     "study_id": "Guo_MBE-2021",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Guo_MBE-2021.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:48:53.953822",
+    "processed_at": "2026-09-14T12:32:56.748715",
     "error_message": null,
-    "file_hash": "517a07c6522ef079ec0feb6d97c407b7d56644e19cec95a7e643ba44f3c2749e"
+    "file_hash": "312e465435351f7a15c5f2cb6a3dfc5ad92b30d62ba4db4d17264a625d27dc4a"
   },
   {
     "study_id": "Pask_NatCommun-2017",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Pask_NatCommun-2017.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:50:07.998086",
+    "processed_at": "2026-09-14T12:37:39.737787",
     "error_message": null,
     "file_hash": "c341b60f779bbbd3eca239f27ac34f0294d11351a51084b39a6ff81c7015918e"
   },
@@ -123,31 +123,31 @@
     "study_id": "Robert_Front_Cell_Neurosci-2021",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Robert_Front_Cell_Neurosci-2021.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:48:24.475008",
+    "processed_at": "2026-09-14T12:31:21.079699",
     "error_message": null,
-    "file_hash": "af97235fdd3b39b9c4cca940a25a0b60d43c9722e3d2f9992c340aadc5f55f0c"
+    "file_hash": "30a174b86187832df41d8b4dd7c6f352442e7b3e21df02da6e7acddf97b9abcd"
   },
   {
     "study_id": "Carey_Nature-2010",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Carey_Nature-2010.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:49:16.482277",
+    "processed_at": "2026-09-14T12:35:37.211972",
     "error_message": null,
-    "file_hash": "7e12e4dd34f9f2729434385600e3ca115818774351ed79f7f45f48a57bab09ed"
+    "file_hash": "dbd8f9e360849a9e0b432c1b3bdb04fcd2d77fc96953293aef761fedb035d159"
   },
   {
     "study_id": "Chang_Curr_Biol-2023",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Chang_Curr_Biol-2023.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:52:08.024920",
+    "processed_at": "2026-09-14T12:31:44.125940",
     "error_message": null,
-    "file_hash": "b547b4c4b9d32400a796aad58dd153f8c985d3e8eb3097e89d5d02ad863ccf7e"
+    "file_hash": "f6c545b7bea76db71ed1b97f07281bd3ccd72ccb552bd29369dfec26258b9880"
   },
   {
     "study_id": "Dobritsa_et.al._2003",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Dobritsa_et.al._2003.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:51:40.653933",
+    "processed_at": "2026-09-14T12:37:52.530100",
     "error_message": null,
     "file_hash": "1ba36b36121ef9c0062bb5bf0a16424ed24a267dba98d71ecf3d9c8348870b35"
   },
@@ -155,7 +155,7 @@
     "study_id": "Dweck_et_al._2015a",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Dweck_et_al._2015a.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:52:27.344989",
+    "processed_at": "2026-09-14T12:37:56.684864",
     "error_message": null,
     "file_hash": "67656fec4639a42554d8340058cf5afdf97c8cb60ddd7f8d79a196fdb2796163"
   },
@@ -163,79 +163,79 @@
     "study_id": "Goldman_et.al._2005",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Goldman_et.al._2005.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:51:36.974370",
+    "processed_at": "2026-09-14T12:36:36.326355",
     "error_message": null,
-    "file_hash": "98d2e969e2be3f75475dec677e3add82063fbe1d0207e875caf20d06bfc6046a"
+    "file_hash": "31180f6b03db0cb19a15a87b93cd8b98ba4968bc736da057d80a52be7464ebc4"
   },
   {
     "study_id": "Hallem_et.al._2004",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Hallem_et.al._2004.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:51:35.268197",
+    "processed_at": "2026-09-14T12:33:12.089746",
     "error_message": null,
-    "file_hash": "9e2324948082a3f0dccb57a91e17eb96c7bdff79cf76084d377f213a305e85cd"
+    "file_hash": "93f845e689b7c1d33867c4730e6a32130c65c2933e6883b1ddaafee476ca8ab6"
   },
   {
     "study_id": "Hallem_et.al._2006",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Hallem_et.al._2006.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:52:25.560801",
+    "processed_at": "2026-09-14T12:36:05.398376",
     "error_message": null,
-    "file_hash": "49a33c8115f1cc03d7dcebb64bed2e6707ea09af09b2a4a65014ea45b914d222"
+    "file_hash": "1efb30190593603a6bab05892cfbff592bf8bbfa2e85c5a266be7f9d31f7eda5"
   },
   {
     "study_id": "Kreher_et.al._2005",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Kreher_et.al._2005.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:51:04.601343",
+    "processed_at": "2026-09-14T12:36:30.072909",
     "error_message": null,
-    "file_hash": "385fcb52933d2f09846ec70977ff6580edee389aea7b5a00abbbeab274354c42"
+    "file_hash": "3d8260717079f07709b5ee810970d05e983feff31589e4388683d292622eea3e"
   },
   {
     "study_id": "Kreher_et.al._2008",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Kreher_et.al._2008.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:50:59.063518",
+    "processed_at": "2026-09-14T12:35:47.697152",
     "error_message": null,
-    "file_hash": "bca2affa9068dcbf4d851ea8d0ca667bc9a42c885b26f956ef80f6f426470cb6"
+    "file_hash": "f1f80f8cc8231243921b65fc1c12143214dad6a266c98975d790f6b4d5f06be4"
   },
   {
     "study_id": "Liu_Front_Physiol-2020",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Liu_Front_Physiol-2020.xlsx",
-    "status": "DONE",
-    "processed_at": "2026-08-03T02:51:42.790885",
-    "error_message": null,
+    "status": "FAILED",
+    "processed_at": "2026-09-14T12:37:53.618626",
+    "error_message": "Column 'Molecule Name' has value(s) not found among the corresponding CID's PubChem name/synonyms at row(s): 34 ('Ocimene'), 78 ('Ocimene'), 122 ('Ocimene')",
     "file_hash": "ade32de2a2765a23e42c1f4e37208a267c25f025615781703b63dfe0d52b702e"
   },
   {
     "study_id": "Liu_Front_Physiol-2022",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Liu_Front_Physiol-2022.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:50:49.383562",
+    "processed_at": "2026-09-14T12:32:38.148175",
     "error_message": null,
-    "file_hash": "d338440deefc5bd67db179f173cc67d04f27dd983eff5dea9ea9483125894d44"
+    "file_hash": "65f37246a83cf1b6fd3519765918c6758f3b8c10910e48d7070d292bb03e1868"
   },
   {
     "study_id": "Montague_et_al._2011",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Montague_et_al._2011.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:50:48.047166",
+    "processed_at": "2026-09-14T12:36:35.500002",
     "error_message": null,
-    "file_hash": "65f84c9b49cef272b3f6e919b139f1b1d4c602f69f9a013bb53fecc0a0d5c093"
+    "file_hash": "260da7ba12b3bd2d38ee05147175e9aee4a5fa951c29047e0e628e84c4274a41"
   },
   {
     "study_id": "Robert_Mol_Ecol-2022",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Robert_Mol_Ecol-2022.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:48:36.389253",
+    "processed_at": "2026-09-14T13:57:43.850714",
     "error_message": null,
-    "file_hash": "48ad8be14026e745428a77d9362e1bf76e308ce83d7dea34644ef555ecc7a7e0"
+    "file_hash": "d41dddd8345c3f78e627f5bdc9224b40ed84189c3f54dceb0c694d443f867b27"
   },
   {
     "study_id": "Slone_PNAS-2017",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Slone_PNAS-2017.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-04T01:14:43.478348",
+    "processed_at": "2026-09-14T12:36:48.845817",
     "error_message": null,
     "file_hash": "ce4b28124e4c51a001d2647fb1604f6eb63d29dbc884198539cca3ce8fbe7f8b"
   },
@@ -243,7 +243,7 @@
     "study_id": "Van_der_Goes_van_Naters_et.al._2007",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Van_der_Goes_van_Naters_et.al._2007.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:52:09.684502",
+    "processed_at": "2026-09-14T12:37:54.071013",
     "error_message": null,
     "file_hash": "8a7e75d1ea37c0cd5cb12d7d2741014a94acd0f7a8f12160fdab43a587997fbd"
   },
@@ -251,7 +251,7 @@
     "study_id": "Wang_Insects-2024",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Wang_Insects-2024.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:52:10.893366",
+    "processed_at": "2026-09-14T12:37:54.553064",
     "error_message": null,
     "file_hash": "ad88f7e004ec85bf68e06d6ae1a66934a3bb105d8b66987cfed255c9dc2af202"
   },
@@ -259,7 +259,7 @@
     "study_id": "Yuvaraj_IBMB-2018",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Yuvaraj_IBMB-2018.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T02:50:11.852645",
+    "processed_at": "2026-09-14T12:37:42.290022",
     "error_message": null,
     "file_hash": "2e76c9b2f3f6de407e8a9791c7f2fe729e8e4b7af309aef86d8d13877263ce3a"
   },
@@ -291,15 +291,31 @@
     "study_id": "Hou_MolBioEvol_2021",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Hou_MolBioEvol_2021.xlsx",
     "status": "DONE",
-    "processed_at": "2026-08-03T03:14:30.561709",
+    "processed_at": "2026-09-14T12:34:03.611247",
     "error_message": null,
-    "file_hash": "7353dc000f7ce67910d96c15e19379e0053e12304dea9a9869be597f4bfae4e1"
+    "file_hash": "65c6b6cadbe3d3c71a3783d7492dac3fa57b105d746c67d98f210f0458778756"
   },
   {
     "study_id": "Yuvaraj_2024",
     "file_path": "/home/andre/Dev/m2ior_input_2026_08_04/Yuvaraj_2024.xlsx",
     "status": "DONE",
     "processed_at": "2026-08-05T21:42:01.827138",
+    "error_message": null,
+    "file_hash": "cd264d84bb680c8abed7f85f9e6002a5c63510e9259dae3f2d522c00438e4706"
+  },
+  {
+    "study_id": "Si_et_al._2019",
+    "file_path": "/nfs/balthazar/andre/m2ior_input/Si_et_al._2019.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-09-14T14:07:10.982989",
+    "error_message": null,
+    "file_hash": "27f056a5551ee501b5d78eadb78d8592824c3b57a2d21e70d82d6770efee83f4"
+  },
+  {
+    "study_id": "Yuvaraj_BMCBiol-2024",
+    "file_path": "/nfs/balthazar/andre/m2ior_input/Yuvaraj_BMCBiol-2024.xlsx",
+    "status": "DONE",
+    "processed_at": "2026-09-14T12:36:42.980054",
     "error_message": null,
     "file_hash": "cd264d84bb680c8abed7f85f9e6002a5c63510e9259dae3f2d522c00438e4706"
   }
