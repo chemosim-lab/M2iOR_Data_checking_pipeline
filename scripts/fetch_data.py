@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -38,11 +39,38 @@ _PUBCHEM_VIEW_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug_view/data/compoun
 _PUBCHEM_CAS_CID_URL = (
     "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/name/{cas}/cids/JSON"
 )
+_PUBCHEM_INCHIKEY_CID_URL = (
+    "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/inchikey/{inchikey}/cids/JSON"
+)
+_CAS_COMMON_CHEMISTRY_URL = "https://commonchemistry.cas.org/api/detail"
+_CAS_COMMON_CHEMISTRY_SANITY_CAS = "50-00-0"  # formaldehyde
 _APA_URL = "https://doi.org/{doi}"
 _APA_HEADERS = {"Accept": "text/x-bibliography; style=apa; locale=en-US"}
 _REQUEST_DELAY = 0.2  # seconds between requests
 
 _CACHE_FILE = Path(__file__).parent.parent / "cache" / "uniprot_sequences.json"
+
+_DOTENV_PATH = Path(__file__).parent.parent / ".env"
+
+
+def _load_dotenv(path: Path = _DOTENV_PATH) -> None:
+    """Load KEY=VALUE lines from `path` into the environment (existing env
+    vars win). Minimal by design - CAS_API_KEY is the only secret this
+    project reads, so a dependency for a handful of lines isn't worth it."""
+    if not path.exists():
+        return
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
+
+
+def get_cas_api_key() -> str | None:
+    """Return CAS_API_KEY from the environment or .env (see .env.example)."""
+    _load_dotenv()
+    return os.environ.get("CAS_API_KEY")
 
 
 def _fetch_data(accession: str) -> Any | None:
@@ -455,10 +483,174 @@ def fetch_pubchem_data(unique_cids: list[int]) -> list[int]:
 
 
 _CAS_CACHE_SUBDIR = "cas_to_cid"
+_CAS_COMMON_CHEMISTRY_CACHE_SUBDIR = "cas_common_chemistry"
+
+
+def _cas_common_chemistry_key_is_valid(api_key: str) -> bool:
+    """One cheap lookup to tell an invalid/rejected API key apart from a CAS
+    number that's simply not in CAS Common Chemistry's ~500k-substance set -
+    so a bad key logs once instead of a "not found" per CAS number."""
+    try:
+        response = requests.get(
+            _CAS_COMMON_CHEMISTRY_URL,
+            params={"cas_rn": _CAS_COMMON_CHEMISTRY_SANITY_CAS},
+            headers={"X-API-KEY": api_key},
+            timeout=10,
+        )
+    except requests.RequestException:
+        return True  # transient network issue, not a key problem - let the batch try
+    return response.status_code not in (401, 403)
+
+
+def fetch_cas_common_chemistry_details(
+    unique_cas: list[str],
+) -> dict[str, dict[str, Any]]:
+    """Fetch (or read from cache) each CAS number's own record directly from
+    CAS Common Chemistry - the registry that assigns CAS numbers - via
+    https://commonchemistry.cas.org/api/detail?cas_rn={cas}.
+
+    This is the priority source for anything CAS-related: a direct,
+    unambiguous lookup by registry number, rather than indirectly resolving
+    a CAS number through PubChem's fuzzy name search. Returns a
+    cas -> {"name", "synonyms", "inchikey", "smiles"} mapping, omitting any
+    CAS Common Chemistry has no record for (a meaningful fraction - its
+    ~500k "common" substances are far fewer than PubChem's 100M+) - callers
+    fall back to PubChem for those.
+
+    Requires CAS_API_KEY (see .env.example); if it's unset or rejected,
+    every CAS is skipped (logged once) so callers' PubChem fallback still runs.
+    """
+    if not unique_cas:
+        return {}
+
+    api_key = get_cas_api_key()
+    if not api_key:
+        logger.info(
+            "CAS_API_KEY not set - skipping CAS Common Chemistry, falling back "
+            "to PubChem for CAS number(s) (see .env.example)."
+        )
+        return {}
+
+    details: dict[str, dict[str, Any]] = {
+        cas: cached
+        for cas in unique_cas
+        if (cached := get_cache(cas, subdir=_CAS_COMMON_CHEMISTRY_CACHE_SUBDIR))
+        is not None
+        and not cached.get("not_found")
+    }
+
+    to_fetch = get_missing_keys(unique_cas, subdir=_CAS_COMMON_CHEMISTRY_CACHE_SUBDIR)
+    if not to_fetch:
+        return details
+
+    if not _cas_common_chemistry_key_is_valid(api_key):
+        logger.warning(
+            "CAS Common Chemistry rejected CAS_API_KEY (401/403) - skipping it for "
+            "this run, falling back to PubChem for CAS number(s)."
+        )
+        return details
+
+    logger.info(
+        "Querying %d CAS number(s) on CAS Common Chemistry (%d already cached)...",
+        len(to_fetch),
+        len(unique_cas) - len(to_fetch),
+    )
+    headers = {"X-API-KEY": api_key}
+    for i, cas in enumerate(to_fetch, start=1):
+        try:
+            response = requests.get(
+                _CAS_COMMON_CHEMISTRY_URL,
+                params={"cas_rn": cas},
+                headers=headers,
+                timeout=10,
+            )
+            if response.status_code == _HTTP_OK:
+                data = response.json()
+                record = {
+                    "name": data.get("name"),
+                    "synonyms": data.get("synonyms", []),
+                    "inchikey": data.get("inchiKey"),
+                    "smiles": data.get("canonicalSmile"),
+                }
+                set_cache(cas, record, subdir=_CAS_COMMON_CHEMISTRY_CACHE_SUBDIR)
+                details[cas] = record
+                logger.info("  [%d/%d] CAS:%s ... ok", i, len(to_fetch), cas)
+            elif response.status_code == 404:
+                set_cache(
+                    cas, {"not_found": True}, subdir=_CAS_COMMON_CHEMISTRY_CACHE_SUBDIR
+                )
+                logger.info("  [%d/%d] CAS:%s ... not found", i, len(to_fetch), cas)
+            else:
+                logger.info(
+                    "  [%d/%d] CAS:%s ... error (HTTP %d)",
+                    i,
+                    len(to_fetch),
+                    cas,
+                    response.status_code,
+                )
+        except requests.RequestException as e:
+            logger.info("  [%d/%d] CAS:%s ... error: %s", i, len(to_fetch), cas, e)
+
+        if i < len(to_fetch):
+            time.sleep(_REQUEST_DELAY)
+
+    return details
+
+
+def _cid_from_inchikey(inchikey: str) -> int | None:
+    try:
+        response = requests.get(
+            _PUBCHEM_INCHIKEY_CID_URL.format(inchikey=inchikey), timeout=10
+        )
+        if response.status_code == _HTTP_OK:
+            cids = response.json().get("IdentifierList", {}).get("CID", [])
+            return cids[0] if cids else None
+    except requests.RequestException:
+        pass
+    return None
+
+
+def _cid_via_pubchem_name_search(cas: str, i: int, total: int) -> int | None:
+    """Fallback resolution: search PubChem by the CAS number as if it were a
+    compound name/synonym (used when CAS Common Chemistry has no InChIKey for
+    this CAS to cross-reference directly)."""
+    try:
+        response = requests.get(_PUBCHEM_CAS_CID_URL.format(cas=cas), timeout=10)
+    except requests.RequestException as e:
+        logger.info("  [%d/%d] CAS:%s ... error: %s", i, total, cas, e)
+        return None
+    if response.status_code != _HTTP_OK:
+        logger.info(
+            "  [%d/%d] CAS:%s ... not found (HTTP %d)",
+            i,
+            total,
+            cas,
+            response.status_code,
+        )
+        return None
+    cids = response.json().get("IdentifierList", {}).get("CID", [])
+    return cids[0] if cids else None
+
+
+def _resolve_cas_to_cid(
+    cas: str, inchikey: str | None, i: int, total: int
+) -> tuple[int | None, str]:
+    """Resolve one CAS number to a PubChem CID, returning (cid, source label)."""
+    if inchikey:
+        cid = _cid_from_inchikey(inchikey)
+        if cid:
+            return cid, "CAS Common Chemistry InChIKey"
+    return _cid_via_pubchem_name_search(cas, i, total), "PubChem name search"
 
 
 def fetch_cas_to_cid_map(unique_cas: list[str]) -> dict[str, int]:
     """Fetch (or read from cache) the PubChem CID associated with each CAS number.
+
+    Prioritizes CAS Common Chemistry: its InChIKey for that CAS number is
+    looked up on PubChem directly (an unambiguous structure match), which is
+    more precise than searching PubChem by the CAS number as if it were a
+    compound name/synonym. Falls back to that name search for any CAS Common
+    Chemistry doesn't have a record for, or has no InChIKey for.
 
     Returns a cas -> cid mapping, omitting any CAS PubChem has no compound for.
     """
@@ -474,40 +666,31 @@ def fetch_cas_to_cid_map(unique_cas: list[str]) -> dict[str, int]:
 
     to_fetch = get_missing_keys(unique_cas, subdir=_CAS_CACHE_SUBDIR)
     if to_fetch:
+        cas_details = fetch_cas_common_chemistry_details(to_fetch)
         logger.info(
             "Querying %d CAS number(s) on PubChem (%d already cached)...",
             len(to_fetch),
             len(unique_cas) - len(to_fetch),
         )
         for i, cas in enumerate(to_fetch, start=1):
-            try:
-                response = requests.get(_PUBCHEM_CAS_CID_URL.format(cas=cas), timeout=10)
-                if response.status_code == _HTTP_OK:
-                    cids = response.json().get("IdentifierList", {}).get("CID", [])
-                    cid = cids[0] if cids else None
-                    # A confirmed empty result is definitive and worth caching;
-                    # a non-200 or network error may be transient, so it's left
-                    # uncached and retried on the next run.
-                    set_cache(cas, {"cid": cid}, subdir=_CAS_CACHE_SUBDIR)
-                    if cid:
-                        cas_to_cid[cas] = cid
-                        logger.info(
-                            "  [%d/%d] CAS:%s ... CID:%s", i, len(to_fetch), cas, cid
-                        )
-                    else:
-                        logger.info(
-                            "  [%d/%d] CAS:%s ... not found", i, len(to_fetch), cas
-                        )
-                else:
-                    logger.info(
-                        "  [%d/%d] CAS:%s ... not found (HTTP %d)",
-                        i,
-                        len(to_fetch),
-                        cas,
-                        response.status_code,
-                    )
-            except requests.RequestException as e:
-                logger.info("  [%d/%d] CAS:%s ... error: %s", i, len(to_fetch), cas, e)
+            inchikey = (cas_details.get(cas) or {}).get("inchikey")
+            cid, via = _resolve_cas_to_cid(cas, inchikey, i, len(to_fetch))
+            # A confirmed empty result is definitive and worth caching; a
+            # non-200 or network error may be transient, so it's left
+            # uncached and retried on the next run.
+            set_cache(cas, {"cid": cid}, subdir=_CAS_CACHE_SUBDIR)
+            if cid:
+                cas_to_cid[cas] = cid
+                logger.info(
+                    "  [%d/%d] CAS:%s ... CID:%s (via %s)",
+                    i,
+                    len(to_fetch),
+                    cas,
+                    cid,
+                    via,
+                )
+            else:
+                logger.info("  [%d/%d] CAS:%s ... not found", i, len(to_fetch), cas)
 
             if i < len(to_fetch):
                 time.sleep(_REQUEST_DELAY)

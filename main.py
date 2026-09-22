@@ -32,6 +32,7 @@ from scripts.columns import (
 from scripts.export_csv import export_to_csv
 from scripts.fetch_data import (
     fetch_apa_references,
+    fetch_cas_common_chemistry_details,
     fetch_cas_to_cid_map,
     fetch_cids_from_cas,
     fetch_genbank_data,
@@ -190,8 +191,11 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
             fetch_pubchem_data(new_cids)
 
         # Cross-check: rows with both a (single) CID and CAS(es) → resolve each
-        # CAS to a CID on PubChem so process_molecules can verify they agree.
-        cas_to_cid_map = fetch_cas_to_cid_map(get_unique_cas_for_cross_check(df))
+        # CAS to a CID (prioritizing CAS Common Chemistry, see fetch_data.py)
+        # so process_molecules can verify they agree with the table's CID.
+        unique_cas_for_check = get_unique_cas_for_cross_check(df)
+        cas_to_cid_map = fetch_cas_to_cid_map(unique_cas_for_check)
+        cas_details_map = fetch_cas_common_chemistry_details(unique_cas_for_check)
         extra_cids = [
             cid for cid in cas_to_cid_map.values() if cid not in all_unique_cids
         ]
@@ -203,6 +207,7 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
             M2IOR_DATA_INPUT_PATH / "cid_synonyms",
             M2IOR_MOLECULE_IMAGES_PATH,
             cas_to_cid_map=cas_to_cid_map,
+            cas_details_map=cas_details_map,
         )
 
         # ----------------------------------------------------------------------

@@ -1,6 +1,7 @@
 # pipeline/scripts/process_molecules.py
 import re
 from pathlib import Path
+from typing import Any
 
 import colorlog
 import pandas as pd
@@ -57,12 +58,20 @@ _DASH_TO_HYPHEN = {
 _NAME_CHAR_REPLACEMENTS = {**_GREEK_TO_LATIN, **_DASH_TO_HYPHEN}
 
 
+_HTML_TAG_RE = re.compile(r"<[^>]+>")
+
+
 def _normalize_name(text: str) -> str:
-    """Lowercase a molecule name, spell out Greek letters (e.g. 'β' -> 'beta')
-    and normalize typographic dashes to a plain hyphen, so it compares equal to
-    PubChem's Latin-spelled, plain-hyphen equivalent (e.g. '(−)-β-Elemene' vs
-    '(-)-beta-Elemene')."""
-    lowered = text.strip().lower()
+    """Lowercase a molecule name, strip HTML markup, spell out Greek letters
+    (e.g. 'β' -> 'beta') and normalize typographic dashes to a plain hyphen.
+
+    CAS Common Chemistry's synonyms wrap stereodescriptors in formatting tags
+    (e.g. '(<em>R</em>)-(+)-Limonene', '<span class="text-smallcaps">D</span>
+    -Limonene') that must be stripped for these to compare equal to a plain
+    '(R)-(+)-Limonene' from the input table. PubChem's own names/synonyms and
+    typographic dashes (e.g. '(−)-β-Elemene' vs '(-)-beta-Elemene') are
+    normalized the same way."""
+    lowered = _HTML_TAG_RE.sub("", text.strip().lower())
     return "".join(_NAME_CHAR_REPLACEMENTS.get(ch, ch) for ch in lowered)
 
 
@@ -302,11 +311,38 @@ def _pooled_candidates(
     return candidates
 
 
+def _cas_side_candidates(
+    cas: str,
+    rcid: int,
+    cas_details_map: dict[str, dict[str, Any]],
+    name_map: dict[int, str],
+    synonym_map: dict[int, list[str]],
+) -> set[str]:
+    """Name/synonym candidates for one CAS number's identity.
+
+    Prioritizes CAS Common Chemistry's own record for that CAS number (see
+    `fetch_cas_common_chemistry_details`) - CAS itself, over PubChem's
+    name/synonyms for whatever CID PubChem happens to resolve that CAS to.
+    Falls back to the latter when CAS Common Chemistry has no record for it.
+    """
+    detail = cas_details_map.get(cas)
+    if detail:
+        candidates: set[str] = set()
+        if detail.get("name"):
+            candidates.add(_normalize_name(detail["name"]))
+        candidates.update(_normalize_name(s) for s in detail.get("synonyms") or [])
+        if candidates:
+            return candidates
+    return _pooled_candidates(rcid, name_map, synonym_map)
+
+
 def reconcile_cid_cas(
     df: pd.DataFrame,
     cas_to_cid_map: dict[str, int],
     name_map: dict[int, str],
     synonym_map: dict[int, list[str]],
+    cas_map: dict[int, str] | None = None,
+    cas_details_map: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     """For single-CID rows with one or more CAS numbers, verify PubChem agrees
     that the CAS(es) and the CID refer to the same compound; correct whichever
@@ -318,15 +354,18 @@ def reconcile_cid_cas(
       - Name matches only the CID's PubChem name/synonyms -> the CAS is wrong;
         it gets corrected downstream by `_enrich_molecule_columns` from the
         CID's own record, so nothing needs fixing here besides a warning.
-      - Name matches only the CAS-resolved compound's name/synonyms -> the CID
-        is wrong; it is corrected here so downstream enrichment re-derives
-        Name/CAS/InChIKey/SMILES from the right compound.
+      - Name matches only the CAS side's name/synonyms (priority: CAS Common
+        Chemistry's own record for that CAS number, see `_cas_side_candidates`)
+        -> the CID is wrong; it is corrected here so downstream enrichment
+        re-derives Name/CAS/InChIKey/SMILES from the right compound.
       - Name matches both -> no real ambiguity, keep the CID as-is silently.
       - Name matches neither -> unresolvable, blocks the pipeline.
 
     Mixture rows (several CIDs in one cell) are skipped -- a CAS number can't
     be reliably pinned to one compound among several.
     """
+    cas_map = cas_map or {}
+    cas_details_map = cas_details_map or {}
     mol = df[MOLECULE]
     blocked: list[tuple[int, str]] = []
 
@@ -354,10 +393,11 @@ def reconcile_cid_cas(
         name = _normalize_name(str(raw_name)) if pd.notna(raw_name) else ""
 
         cid_candidates = _pooled_candidates(cid, name_map, synonym_map)
-        cas_cids = sorted(set(inconsistent.values()))
-        cas_candidates: set[str] = set()
-        for rcid in cas_cids:
-            cas_candidates |= _pooled_candidates(rcid, name_map, synonym_map)
+        per_cas_candidates = {
+            cas: _cas_side_candidates(cas, rcid, cas_details_map, name_map, synonym_map)
+            for cas, rcid in inconsistent.items()
+        }
+        cas_candidates: set[str] = set().union(*per_cas_candidates.values())
 
         match_cid = bool(name) and name in cid_candidates
         match_cas = bool(name) and name in cas_candidates
@@ -365,27 +405,29 @@ def reconcile_cid_cas(
         if match_cid and match_cas:
             continue  # Name confirms both sides - no ambiguity to flag
         if match_cid:
+            corrected_cas = cas_map.get(cid)
             logger.warning(
                 "  Molecule row %s: CAS(es) %s don't match the table's CID:%s - "
-                "keeping CID:%s (Name %r matches it) and correcting the CAS.",
+                "keeping CID:%s (Name %r matches it) and correcting the CAS to %s.",
                 idx,
                 mismatch_desc,
                 cid,
                 cid,
                 raw_name,
+                corrected_cas or "<no CAS found in PubChem's record for this CID>",
             )
         elif match_cas:
-            new_cid = next(
-                rcid
-                for rcid in cas_cids
-                if name in _pooled_candidates(rcid, name_map, synonym_map)
+            new_cas, new_cid = next(
+                (cas, inconsistent[cas])
+                for cas, candidates in per_cas_candidates.items()
+                if name in candidates
             )
             logger.warning(
-                "  Molecule row %s: CID:%s doesn't match CAS(es) %s - Name %r matches "
+                "  Molecule row %s: CID:%s doesn't match CAS:%s - Name %r matches "
                 "the CAS side instead, correcting CID:%s → CID:%s.",
                 idx,
                 cid,
-                mismatch_desc,
+                new_cas,
                 raw_name,
                 cid,
                 new_cid,
@@ -484,6 +526,7 @@ def process_molecules(
     output_dir: Path,
     images_dir: Path,
     cas_to_cid_map: dict[str, int] | None = None,
+    cas_details_map: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     cas_to_cid_map = cas_to_cid_map or {}
     _, initial_unique_cids = _extract_cid_lists(df)
@@ -494,7 +537,14 @@ def process_molecules(
         cache_cids
     )
 
-    reconcile_cid_cas(df, cas_to_cid_map, name_map, synonym_map)
+    reconcile_cid_cas(
+        df,
+        cas_to_cid_map,
+        name_map,
+        synonym_map,
+        cas_map=cas_map,
+        cas_details_map=cas_details_map,
+    )
 
     # Re-extract: reconcile_cid_cas may have corrected some rows' CID.
     cid_lists, unique_cids = _extract_cid_lists(df)
