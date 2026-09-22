@@ -457,20 +457,14 @@ def fetch_pubchem_data(unique_cids: list[int]) -> list[int]:
 _CAS_CACHE_SUBDIR = "cas_to_cid"
 
 
-def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
-    """For Molecule rows with an empty CID, look up the CID via CAS on PubChem.
-    Updates the CID column in df. Returns the list of newly found CIDs."""
-    molecule_df = df[MOLECULE]
-    no_cid = molecule_df[CID_COL].isna() | molecule_df[CID_COL].astype(str).apply(
-        lambda v: len(parse_cid_cell(v)) == 0
-    )
-    missing_cid = no_cid & molecule_df[CAS_COL].notna()
-    cas_series = molecule_df.loc[missing_cid, CAS_COL]
+def fetch_cas_to_cid_map(unique_cas: list[str]) -> dict[str, int]:
+    """Fetch (or read from cache) the PubChem CID associated with each CAS number.
 
-    if cas_series.empty:
-        return []
+    Returns a cas -> cid mapping, omitting any CAS PubChem has no compound for.
+    """
+    if not unique_cas:
+        return {}
 
-    unique_cas = [str(cas) for cas in cas_series.unique().tolist()]
     cas_to_cid: dict[str, int] = {
         cas: cid
         for cas in unique_cas
@@ -481,7 +475,7 @@ def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
     to_fetch = get_missing_keys(unique_cas, subdir=_CAS_CACHE_SUBDIR)
     if to_fetch:
         logger.info(
-            "CID fallback: querying %d CAS number(s) on PubChem (%d already cached)...",
+            "Querying %d CAS number(s) on PubChem (%d already cached)...",
             len(to_fetch),
             len(unique_cas) - len(to_fetch),
         )
@@ -522,6 +516,25 @@ def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
             "All %d CAS→CID mapping(s) already cached, skipping API calls.",
             len(unique_cas),
         )
+
+    return cas_to_cid
+
+
+def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
+    """For Molecule rows with an empty CID, look up the CID via CAS on PubChem.
+    Updates the CID column in df. Returns the list of newly found CIDs."""
+    molecule_df = df[MOLECULE]
+    no_cid = molecule_df[CID_COL].isna() | molecule_df[CID_COL].astype(str).apply(
+        lambda v: len(parse_cid_cell(v)) == 0
+    )
+    missing_cid = no_cid & molecule_df[CAS_COL].notna()
+    cas_series = molecule_df.loc[missing_cid, CAS_COL]
+
+    if cas_series.empty:
+        return []
+
+    unique_cas = [str(cas) for cas in cas_series.unique().tolist()]
+    cas_to_cid = fetch_cas_to_cid_map(unique_cas)
 
     if not cas_to_cid:
         return []

@@ -32,6 +32,7 @@ from scripts.columns import (
 from scripts.export_csv import export_to_csv
 from scripts.fetch_data import (
     fetch_apa_references,
+    fetch_cas_to_cid_map,
     fetch_cids_from_cas,
     fetch_genbank_data,
     fetch_ncbi_data,
@@ -40,6 +41,7 @@ from scripts.fetch_data import (
 )
 from scripts.normalize_dataframe import normalize_df, rename_column
 from scripts.process_molecules import (
+    get_unique_cas_for_cross_check,
     get_unique_cids,
     process_molecules,
     validate_cid_or_cas,
@@ -187,8 +189,20 @@ def process_raw_excel_file(excel_path: Path, *, force_blast: bool = False) -> No
         if new_cids:
             fetch_pubchem_data(new_cids)
 
+        # Cross-check: rows with both a (single) CID and CAS(es) → resolve each
+        # CAS to a CID on PubChem so process_molecules can verify they agree.
+        cas_to_cid_map = fetch_cas_to_cid_map(get_unique_cas_for_cross_check(df))
+        extra_cids = [
+            cid for cid in cas_to_cid_map.values() if cid not in all_unique_cids
+        ]
+        if extra_cids:
+            fetch_pubchem_data(extra_cids)
+
         process_molecules(
-            df, M2IOR_DATA_INPUT_PATH / "cid_synonyms", M2IOR_MOLECULE_IMAGES_PATH
+            df,
+            M2IOR_DATA_INPUT_PATH / "cid_synonyms",
+            M2IOR_MOLECULE_IMAGES_PATH,
+            cas_to_cid_map=cas_to_cid_map,
         )
 
         # ----------------------------------------------------------------------
