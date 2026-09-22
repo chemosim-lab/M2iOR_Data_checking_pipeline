@@ -202,10 +202,10 @@
   {
     "study_id": "Liu_Front_Physiol-2020",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Liu_Front_Physiol-2020.xlsx",
-    "status": "FAILED",
-    "processed_at": "2026-09-14T12:37:53.618626",
-    "error_message": "Column 'Molecule Name' has value(s) not found among the corresponding CID's PubChem name/synonyms at row(s): 34 ('Ocimene'), 78 ('Ocimene'), 122 ('Ocimene')",
-    "file_hash": "ade32de2a2765a23e42c1f4e37208a267c25f025615781703b63dfe0d52b702e"
+    "status": "DONE",
+    "processed_at": "2026-09-22T18:02:30.576003",
+    "error_message": null,
+    "file_hash": "fbcda8a73d850bf4e54a533a43e1a3dafb444e14482838214432151fabe69fbc"
   },
   {
     "study_id": "Liu_Front_Physiol-2022",
