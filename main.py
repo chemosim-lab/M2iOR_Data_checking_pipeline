@@ -403,7 +403,7 @@ if __name__ == "__main__":
     do_all = cast(bool, args.all)
     force_arg = cast(str | None, args.force)
 
-    input_path = Path("/home/andre/mnt/balthazar/andre/m2ior_input/")
+    input_path = Path("/nfs/balthazar/andre/m2ior_input/")
 
     print("Loading processing registry...")
     registry = StudyProcessingRegistry.load(REGISTRY_FILE)
