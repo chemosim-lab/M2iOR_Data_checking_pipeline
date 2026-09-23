@@ -32,7 +32,7 @@ def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
             + f"(feuilles trouvées : {xl.sheet_names}) : {excel_path}"
         )
 
-    _, raw_data_sheet_name = xl.sheet_names
+    raw_data_sheet_name = xl.sheet_names[1]
 
     # Lire toutes la première ligne sans inférence d'en-tête
     raw_check = pd.read_excel(  # pyright: ignore[reportUnknownMemberType]
