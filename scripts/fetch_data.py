@@ -101,6 +101,7 @@ def _fetch_data(accession: str) -> Any | None:
                 reason,
             )
             return None
+        return json_data
     except requests.RequestException as e:
         logger.info("  [UniProt] Failed to fetch %s: %s", accession, e)
         return None
