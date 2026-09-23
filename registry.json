@@ -130,9 +130,9 @@
   {
     "study_id": "Carey_Nature-2010",
     "file_path": "/home/andre/mnt/balthazar/andre/m2ior_input/Carey_Nature-2010.xlsx",
-    "status": "DONE",
+    "status": "FAILED",
     "processed_at": "2026-09-14T12:35:37.211972",
-    "error_message": null,
+    "error_message": "UID: in _get_receptor_name [0A182IIS6] Cache not found for this UID.",
     "file_hash": "dbd8f9e360849a9e0b432c1b3bdb04fcd2d77fc96953293aef761fedb035d159"
   },
   {
@@ -318,5 +318,13 @@
     "processed_at": "2026-09-14T12:36:42.980054",
     "error_message": null,
     "file_hash": "cd264d84bb680c8abed7f85f9e6002a5c63510e9259dae3f2d522c00438e4706"
+  },
+  {
+    "study_id": "Yan_et_al_2022",
+    "file_path": "/nfs/balthazar/andre/m2ior_input/Yan_et_al_2022.xlsx",
+    "status": "FAILED",
+    "processed_at": null,
+    "error_message": "/nfs/balthazar/andre/m2ior_input/Yan_et_al_2022.xlsx: missing columns in 'Response'.\n  missing : ['Value Nature']\n  found   : ['Responsive', 'Parameter', 'Value', 'Unit', 'Value nature', 'Concentration', 'Concentration Unit', 'Nbr. measurements', 'Multimer responsive to control ligand (VUAA1 , …)']",
+    "file_hash": null
   }
 ]
