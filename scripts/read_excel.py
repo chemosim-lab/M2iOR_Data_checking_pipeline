@@ -53,7 +53,7 @@ def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
     # Ligne 0 : labels de groupe — forward-fill pour les cellules fusionnées
     groups = raw_check.iloc[0].ffill()
     # Ligne 1 : noms de colonnes
-    columns = raw_check.iloc[1]
+    columns = _normalize_columns(groups, raw_check.iloc[1])
 
     _validate_structure(groups, columns, excel_path)
 
@@ -70,6 +70,21 @@ def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
     df.columns = multi_columns
 
     return df
+
+
+def _normalize_columns(groups: pd.Series, columns: pd.Series) -> pd.Series:
+    """Rename headers to their canonical casing (e.g. "value nature" -> "Value Nature")."""
+    canonical_by_group = {
+        group: {col.lower(): col for col in cols} for group, cols in COLUMNS_BY_GROUP
+    }
+    normalized = columns.copy()
+    for idx, col in columns.items():
+        if pd.isna(col):
+            continue
+        canonical = canonical_by_group.get(groups[idx], {}).get(str(col).lower())
+        if canonical is not None:
+            normalized[idx] = canonical
+    return normalized
 
 
 def _validate_structure(
