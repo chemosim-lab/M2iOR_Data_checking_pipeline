@@ -43,9 +43,10 @@ _GREEK_TO_LATIN = {
     "ω": "omega",
 }
 
-# Chemical nomenclature (e.g. stereodescriptors like "(−)-") often uses a
-# typographic minus/dash instead of a plain hyphen-minus, which PubChem's own
-# names/synonyms always use.
+# Chemical nomenclature (e.g. stereodescriptors like "(−)-") and CAS numbers
+# (e.g. "2244–16-8") often use a typographic minus/dash instead of a plain
+# hyphen-minus, which PubChem's own names/synonyms - and the CAS format
+# itself - always use.
 _DASH_TO_HYPHEN = {
     "‐": "-",  # HYPHEN
     "‑": "-",  # NON-BREAKING HYPHEN
@@ -54,6 +55,12 @@ _DASH_TO_HYPHEN = {
     "—": "-",  # EM DASH
     "−": "-",  # MINUS SIGN
 }
+
+
+def normalize_dashes(text: str) -> str:
+    """Replace typographic dash/minus characters with a plain hyphen-minus."""
+    return "".join(_DASH_TO_HYPHEN.get(ch, ch) for ch in text)
+
 
 # Locants like "4'-Ethylacetophenone" are commonly typed with a typographic
 # prime or curly quote instead of a plain apostrophe.
@@ -122,11 +129,14 @@ def parse_cas_cell(raw: object) -> list[str]:
     """Parse a CAS cell into its list of CAS numbers.
 
     Mirrors `parse_cid_cell`: accepts a single CAS number or several joined by
-    'and'/commas/'+'. Tokens that don't look like a CAS number (##-##-#) are dropped.
+    'and'/commas/'+'. Tokens that don't look like a CAS number (##-##-#) are
+    dropped. Typographic dashes (e.g. "2244–16-8") are normalized to a plain
+    hyphen first, since a CAS number is only ever typed with one but sources
+    sometimes substitute an en dash or similar.
     """
     if pd.isna(raw):
         return []
-    text = str(raw).strip()
+    text = normalize_dashes(str(raw).strip())
     if not text:
         return []
     normalized = re.sub(r"\band\b", ",", text, flags=re.IGNORECASE).replace("+", ",")

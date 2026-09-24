@@ -24,7 +24,7 @@ from scripts.fetch_blast import (
     get_new_blast_queries,
     get_successful_blast_queries,
 )
-from scripts.process_molecules import parse_cid_cell
+from scripts.process_molecules import normalize_dashes, parse_cid_cell
 from scripts.process_receptors import NOT_AVAILABLE, resolve_missing_accessions_via_blast
 
 logger = colorlog.getLogger(__name__)
@@ -768,7 +768,10 @@ def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
         lambda v: len(parse_cid_cell(v)) == 0
     )
     missing_cid = no_cid & molecule_df[CAS_COL].notna()
-    cas_series = molecule_df.loc[missing_cid, CAS_COL]
+    # Typographic dashes (e.g. "2244–16-8") aren't valid in a CAS number but
+    # show up in source data; normalize before this is used as a lookup key
+    # or sent to PubChem/CAS Common Chemistry.
+    cas_series = molecule_df.loc[missing_cid, CAS_COL].astype(str).map(normalize_dashes)
 
     if cas_series.empty:
         return []
