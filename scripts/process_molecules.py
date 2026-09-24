@@ -15,6 +15,9 @@ logger = colorlog.getLogger(__name__)
 _CAS_RE = re.compile(r"^\d{2,7}-\d{2}-\d$")
 _CID_TOKEN_RE = re.compile(r"^\d+(?:\.\d+)?$")
 
+_PUBCHEM_COMPOUND_URL = "https://pubchem.ncbi.nlm.nih.gov/compound/{cid}"
+_CAS_COMMON_CHEMISTRY_DETAIL_URL = "https://commonchemistry.cas.org/detail?cas_rn={cas}"
+
 _GREEK_TO_LATIN = {
     "α": "alpha",
     "β": "beta",
@@ -478,6 +481,20 @@ def reconcile_cid_cas(
         raise ValueError(msg)
 
 
+def _reference_urls(cids: list[int], cas_list: list[str]) -> str:
+    """Format a row's CID(s)/CAS(es) as clickable reference links, e.g.
+    "CID 537747 (https://pubchem.ncbi.nlm.nih.gov/compound/537747)". Shows
+    whichever of the two the row actually has - CID only, CAS only, or both."""
+    refs = [
+        f"CID {cid} ({_PUBCHEM_COMPOUND_URL.format(cid=cid)})" for cid in cids
+    ]
+    refs += [
+        f"CAS {cas} ({_CAS_COMMON_CHEMISTRY_DETAIL_URL.format(cas=cas)})"
+        for cas in cas_list
+    ]
+    return ", ".join(refs) if refs else "no CID/CAS"
+
+
 def _row_name_candidates(
     cids: list[int],
     cas_list: list[str],
@@ -541,7 +558,7 @@ def validate_molecule_name_column(
     cas_details_map = cas_details_map or {}
     name_col = df[MOLECULE][MOLECULE_NAME]
     cas_col = df[MOLECULE][CAS]
-    mismatches: list[tuple[int, str]] = []
+    mismatches: list[tuple[int, str, list[int], list[str]]] = []
 
     for idx, cids in cid_lists.items():
         raw_name = name_col.get(idx)
@@ -579,13 +596,16 @@ def validate_molecule_name_column(
             mismatch = any(_normalize_name(part) not in pooled for part in parts)
 
         if mismatch:
-            mismatches.append((idx, str(raw_name)))
+            mismatches.append((idx, str(raw_name), cids, cas_list))
 
     if mismatches:
-        rows = ", ".join(f"{idx} ({name!r})" for idx, name in mismatches)
+        lines = "\n".join(
+            f"  - row {idx}: {name!r} — {_reference_urls(cids, cas_list)}"
+            for idx, name, cids, cas_list in mismatches
+        )
         msg = (
             f"Column '{MOLECULE_NAME}' has value(s) not found among the "
-            f"corresponding CID's PubChem name/synonyms at row(s): {rows}"
+            f"corresponding CID's PubChem name/synonyms:\n{lines}"
         )
         raise ValueError(msg)
 
