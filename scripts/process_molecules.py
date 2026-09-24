@@ -55,15 +55,30 @@ _DASH_TO_HYPHEN = {
     "−": "-",  # MINUS SIGN
 }
 
-_NAME_CHAR_REPLACEMENTS = {**_GREEK_TO_LATIN, **_DASH_TO_HYPHEN}
+# Locants like "4'-Ethylacetophenone" are commonly typed with a typographic
+# prime or curly quote instead of a plain apostrophe.
+_QUOTE_TO_APOSTROPHE = {
+    "′": "'",  # PRIME
+    "‘": "'",  # LEFT SINGLE QUOTATION MARK
+    "’": "'",  # RIGHT SINGLE QUOTATION MARK
+}
+
+_NAME_CHAR_REPLACEMENTS = {**_GREEK_TO_LATIN, **_DASH_TO_HYPHEN, **_QUOTE_TO_APOSTROPHE}
 
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
 
+# "(E)-"/"(Z)-" and "trans-"/"cis-" are interchangeable stereodescriptor
+# conventions for the simple disubstituted alkenes these odorant names cover
+# (e.g. "(E)-β-Farnesene" == PubChem's own "trans-beta-Farnesene"); collapsing
+# both to the same form lets them compare equal.
+_STEREO_PAREN_RE = re.compile(r"\(([ez])\)-?")
+
 
 def _normalize_name(text: str) -> str:
     """Lowercase a molecule name, strip HTML markup, spell out Greek letters
-    (e.g. 'β' -> 'beta') and normalize typographic dashes to a plain hyphen.
+    (e.g. 'β' -> 'beta'), normalize typographic dashes/quotes to their plain
+    ASCII form, and canonicalize E/Z vs. trans/cis stereodescriptors.
 
     CAS Common Chemistry's synonyms wrap stereodescriptors in formatting tags
     (e.g. '(<em>R</em>)-(+)-Limonene', '<span class="text-smallcaps">D</span>
@@ -72,7 +87,9 @@ def _normalize_name(text: str) -> str:
     typographic dashes (e.g. '(−)-β-Elemene' vs '(-)-beta-Elemene') are
     normalized the same way."""
     lowered = _HTML_TAG_RE.sub("", text.strip().lower())
-    return "".join(_NAME_CHAR_REPLACEMENTS.get(ch, ch) for ch in lowered)
+    replaced = "".join(_NAME_CHAR_REPLACEMENTS.get(ch, ch) for ch in lowered)
+    replaced = _STEREO_PAREN_RE.sub(r"\1-", replaced)
+    return replaced.replace("trans-", "e-").replace("cis-", "z-")
 
 
 def parse_cid_cell(raw: object) -> list[int]:
@@ -451,14 +468,42 @@ def reconcile_cid_cas(
         raise ValueError(msg)
 
 
+def _row_name_candidates(
+    cids: list[int],
+    cas_list: list[str],
+    cas_details_map: dict[str, dict[str, Any]],
+    name_map: dict[int, str],
+    synonym_map: dict[int, list[str]],
+) -> tuple[set[str], list[set[str]]]:
+    """Build the pooled name/synonym candidates for a row, plus each CID's own
+    candidates (for the positional mixture check). CAS Common Chemistry's
+    name/synonyms are folded in too, but only for single-CID rows - it's
+    ambiguous which CAS maps to which CID in a mixture row."""
+    per_cid_candidates = [
+        _pooled_candidates(cid, name_map, synonym_map) for cid in cids
+    ]
+    pooled: set[str] = set()
+    for candidates in per_cid_candidates:
+        pooled |= candidates
+
+    if len(cids) == 1:
+        for cas in cas_list:
+            pooled |= _cas_side_candidates(
+                cas, cids[0], cas_details_map, name_map, synonym_map
+            )
+
+    return pooled, per_cid_candidates
+
+
 def validate_molecule_name_column(
     df: pd.DataFrame,
     cid_lists: pd.Series,
     name_map: dict[int, str],
     synonym_map: dict[int, list[str]],
+    cas_details_map: dict[str, dict[str, Any]] | None = None,
 ) -> None:
     """Raise ValueError if a row's Molecule Name isn't among its CID(s)' PubChem
-    name or synonyms.
+    name/synonyms, or its CAS number(s)' CAS Common Chemistry name/synonyms.
 
     A multi-CID row's Name is split the same way as its CID cell (on 'and'/commas).
     When the split produces as many name parts as CIDs, each part is checked
@@ -466,13 +511,26 @@ def validate_molecule_name_column(
     this catches e.g. two names swapped between the CIDs of a 2-CID mixture row,
     which a pooled check would miss since both names would still be present
     somewhere in the union. A CID with no cached name/synonyms is skipped at its
-    position rather than treated as a mismatch. Otherwise (single CID, or a
-    part/CID count mismatch), every part is checked against the pooled
-    {record title, synonyms} of all the row's CIDs instead. Rows without a
-    Molecule Name, or whose CID(s) have no cached name/synonyms to compare
-    against at all, are skipped.
+    position rather than treated as a mismatch. Otherwise (a part/CID count
+    mismatch), every part is checked against the pooled {record title, synonyms}
+    of all the row's CIDs instead. A single-CID row's Name is never split --
+    chemical nomenclature routinely contains commas that aren't mixture
+    separators (e.g. "1,8-cineole") -- and is checked whole against that one
+    CID's name/synonyms.
+
+    For a single-CID row with a CAS number, CAS Common Chemistry's own
+    name/synonyms for that CAS (see `fetch_cas_common_chemistry_details`) are
+    added to the pool alongside PubChem's: the two registries don't always
+    spell a name the same way (e.g. PubChem's "trans-beta-Farnesene" vs CAS's
+    "(E)-β-Farnesene"), so either source confirming the name is accepted
+    rather than requiring PubChem specifically to.
+
+    Rows without a Molecule Name, or with nothing cached to compare against
+    from either source, are skipped.
     """
+    cas_details_map = cas_details_map or {}
     name_col = df[MOLECULE][MOLECULE_NAME]
+    cas_col = df[MOLECULE][CAS]
     mismatches: list[tuple[int, str]] = []
 
     for idx, cids in cid_lists.items():
@@ -480,20 +538,27 @@ def validate_molecule_name_column(
         if pd.isna(raw_name) or not str(raw_name).strip():
             continue
 
-        per_cid_candidates = [
-            _pooled_candidates(cid, name_map, synonym_map) for cid in cids
-        ]
-        pooled = set().union(*per_cid_candidates) if per_cid_candidates else set()
+        cas_list = parse_cas_cell(cas_col.get(idx))
+        pooled, per_cid_candidates = _row_name_candidates(
+            cids, cas_list, cas_details_map, name_map, synonym_map
+        )
         if not pooled:
             continue  # nothing cached to compare against
 
-        parts = [
-            p.strip()
-            for p in re.sub(r"\band\b", ",", str(raw_name), flags=re.IGNORECASE).split(
-                ","
-            )
-            if p.strip()
-        ]
+        # Only split on 'and'/commas for actual multi-CID mixture rows - a
+        # single-CID name is compared whole, since chemical nomenclature
+        # routinely contains commas that aren't mixture separators (e.g.
+        # "1,8-cineole", "2,3-butanedione", "2,4,5-trimethylthiazole").
+        if len(cids) > 1:
+            parts = [
+                p.strip()
+                for p in re.sub(
+                    r"\band\b", ",", str(raw_name), flags=re.IGNORECASE
+                ).split(",")
+                if p.strip()
+            ]
+        else:
+            parts = [str(raw_name).strip()]
 
         if len(parts) == len(cids) and len(cids) > 1:
             mismatch = any(
@@ -550,7 +615,9 @@ def process_molecules(
 
     # Re-extract: reconcile_cid_cas may have corrected some rows' CID.
     cid_lists, unique_cids = _extract_cid_lists(df)
-    validate_molecule_name_column(df, cid_lists, name_map, synonym_map)
+    validate_molecule_name_column(
+        df, cid_lists, name_map, synonym_map, cas_details_map=cas_details_map
+    )
     _enrich_molecule_columns(df, cid_lists, name_map, cas_map, inchikey_map, smiles_map)
     _export_synonyms_csv(synonym_map, output_dir)
 
