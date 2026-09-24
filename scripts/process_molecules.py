@@ -78,8 +78,8 @@ def _normalize_name(text: str) -> str:
 def parse_cid_cell(raw: object) -> list[int]:
     """Parse a CID cell into its list of CIDs.
 
-    Accepts a single CID or several joined by 'and'/commas (e.g. '123 and 456').
-    Free text such as 'mixture of 100 compounds' must be treated as not
+    Accepts a single CID or several joined by 'and'/commas/'+' (e.g. '123 and 456',
+    '123+456'). Free text such as 'mixture of 100 compounds' must be treated as not
     applicable rather than mined for a stray number, so the whole cell is
     rejected unless *every* token is numeric.
 
@@ -92,7 +92,9 @@ def parse_cid_cell(raw: object) -> list[int]:
     text = str(raw).strip()
     if not text:
         return []
-    normalized = re.sub(r"\band\b", " ", text, flags=re.IGNORECASE).replace(",", " ")
+    normalized = re.sub(r"\band\b", " ", text, flags=re.IGNORECASE).replace(
+        ",", " "
+    ).replace("+", " ")
     tokens = normalized.split()
     if not tokens or not all(_CID_TOKEN_RE.match(t) for t in tokens):
         return []
@@ -103,14 +105,14 @@ def parse_cas_cell(raw: object) -> list[str]:
     """Parse a CAS cell into its list of CAS numbers.
 
     Mirrors `parse_cid_cell`: accepts a single CAS number or several joined by
-    'and'/commas. Tokens that don't look like a CAS number (##-##-#) are dropped.
+    'and'/commas/'+'. Tokens that don't look like a CAS number (##-##-#) are dropped.
     """
     if pd.isna(raw):
         return []
     text = str(raw).strip()
     if not text:
         return []
-    normalized = re.sub(r"\band\b", ",", text, flags=re.IGNORECASE)
+    normalized = re.sub(r"\band\b", ",", text, flags=re.IGNORECASE).replace("+", ",")
     tokens = [t.strip() for t in normalized.split(",") if t.strip()]
     return [t for t in tokens if _CAS_RE.match(t)]
 
