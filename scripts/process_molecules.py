@@ -113,6 +113,21 @@ def _normalize_name(text: str) -> str:
     return replaced.replace("trans-", "e-").replace("cis-", "z-")
 
 
+def _normalize_name_variants(text: str) -> set[str]:
+    """`_normalize_name`, plus an alternate racemic-marker spelling when one
+    is present. PubChem/CAS spell it inconsistently even for the same
+    compound (e.g. "(+-)-Linalool" next to "(+/-)-linalool" in the same
+    synonym list, while "(+/-)-Citronellal" has no "+-" form at all), so a
+    name normalizing to one has to be checked against both."""
+    normalized = _normalize_name(text)
+    variants = {normalized}
+    if "+/-" in normalized:
+        variants.add(normalized.replace("+/-", "+-"))
+    elif "+-" in normalized:
+        variants.add(normalized.replace("+-", "+/-"))
+    return variants
+
+
 def parse_cid_cell(raw: object) -> list[int]:
     """Parse a CID cell into its list of CIDs.
 
@@ -600,11 +615,13 @@ def validate_molecule_name_column(
 
         if len(parts) == len(cids) and len(cids) > 1:
             mismatch = any(
-                candidates and _normalize_name(part) not in candidates
+                candidates and not (_normalize_name_variants(part) & candidates)
                 for part, candidates in zip(parts, per_cid_candidates, strict=True)
             )
         else:
-            mismatch = any(_normalize_name(part) not in pooled for part in parts)
+            mismatch = any(
+                not (_normalize_name_variants(part) & pooled) for part in parts
+            )
 
         if mismatch:
             mismatches.append((idx, str(raw_name), cids, cas_list))
