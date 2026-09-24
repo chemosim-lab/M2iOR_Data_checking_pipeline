@@ -79,21 +79,23 @@ def _get_normalized_receptor_name(names: list[str]) -> str | None:
     return None
 
 
-def _extract_receptor_name_data(uid: str, data: dict[str, Any]) -> dict[str, Any]:
-    output_data = dict[str, Any]()
-    try:
-        output_data["geneName"] = data["genes"][0]["geneName"]["value"]
-    except KeyError as e:
-        msg = f"UID:[{uid}] Unexpected UniProt cache structure: missing key {e}"
-        raise ValueError(msg) from e
+def _extract_receptor_name_data(data: dict[str, Any]) -> dict[str, Any]:
+    """Pull a gene name and its synonyms out of a UniProt cache entry.
 
-    try:
-        synonyms_data: list[dict[str, str]] = data["synonyms"]
-        output_data["synonyms"] = [syn["value"] for syn in synonyms_data]
-    except KeyError:
-        output_data["synonyms"] = None
+    Neither field is guaranteed: an automated/unreviewed (TrEMBL) entry with
+    a low annotation score commonly has no 'genes' key at all - that's a
+    legitimate UniProt shape, not a malformed cache, so it's treated as "no
+    gene name" rather than an error. `_get_receptor_name` falls back to the
+    protein description, and ultimately the raw accession, when this comes
+    back empty.
+    """
+    genes: list[dict[str, Any]] = data.get("genes") or []
+    gene_name = genes[0].get("geneName", {}).get("value") if genes else None
 
-    return output_data
+    synonyms_data: list[dict[str, str]] | None = data.get("synonyms")
+    synonyms = [syn["value"] for syn in synonyms_data] if synonyms_data else None
+
+    return {"geneName": gene_name, "synonyms": synonyms}
 
 
 def _extract_or_name_from_description(desc: str) -> str | None:
@@ -104,15 +106,29 @@ def _extract_or_name_from_description(desc: str) -> str | None:
     return None
 
 
+def _uniprot_protein_description(data: dict[str, Any]) -> str | None:
+    """Best-effort protein description text, for description-based receptor
+    name extraction (see `_extract_or_name_from_description`). An
+    automated/unreviewed (TrEMBL) entry commonly has no recommendedName and
+    only a submissionName instead."""
+    desc = data.get("proteinDescription") or {}
+    if full := desc.get("recommendedName", {}).get("fullName", {}).get("value"):
+        return full
+    submission_names: list[dict[str, Any]] = desc.get("submissionNames") or []
+    if submission_names:
+        return submission_names[0].get("fullName", {}).get("value")
+    return None
+
+
 def _get_receptor_name(uid: str) -> str | None:
 
     data: dict[str, Any] | None = get_cache(uid, subdir="receptors")
     if not data:
         msg = f"UID: in _get_receptor_name [{uid}] Cache not found for this UID."
         raise ValueError(msg)
-    receptor_name_data: dict[str, Any] = _extract_receptor_name_data(uid, data)
+    receptor_name_data: dict[str, Any] = _extract_receptor_name_data(data)
 
-    receptor_name = receptor_name_data.get("geneName", "")
+    receptor_name = receptor_name_data.get("geneName") or ""
     synonyms: list[str] = receptor_name_data.get("synonyms") or []
 
     normalized_receptor_name: str | None = _get_normalized_receptor_name(
@@ -132,6 +148,15 @@ def _get_receptor_name(uid: str) -> str | None:
 
     if receptor_name:
         return receptor_name
+
+    # UniProt fallback: an automated/unreviewed entry with no gene name (e.g.
+    # a low annotation-score TrEMBL record) may still spell out an Or<N> in
+    # its protein description.
+    uniprot_desc = _uniprot_protein_description(data)
+    if uniprot_desc:
+        from_desc = _extract_or_name_from_description(uniprot_desc)
+        if from_desc:
+            return from_desc
 
     msg = (
         f"UID:[{uid}] No Or<N>[a-z] receptor name found - "
