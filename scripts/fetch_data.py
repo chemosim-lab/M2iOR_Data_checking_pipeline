@@ -781,8 +781,10 @@ def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:
 
     updated = cas_series.astype(str).map(cas_to_cid)
     mask = updated.notna()
+    # The CID column holds text (see parse_cid_cell) - pandas 3.0's "str"
+    # dtype rejects raw ints on assignment, so stringify before writing back.
     df.loc[updated.index[mask], (MOLECULE, CID_COL)] = (
-        updated[mask].astype(int).to_numpy()
+        updated[mask].astype(int).astype(str).to_numpy()
     )
 
     return list(cas_to_cid.values())
