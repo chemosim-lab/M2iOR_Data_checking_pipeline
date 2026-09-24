@@ -320,9 +320,11 @@ def _receptor_names_by_query(
         if group not in df.columns.get_level_values(0):
             continue
         sub = df[group]
-        seq = sub[SEQUENCE].astype(str).str.replace(r"\s+", "", regex=True)
-        species = sub[SPECIES].astype(str).str.strip()
-        name = sub[RECEPTOR_NAME].astype(str).str.strip()
+        # fillna before astype(str): pandas 3.0 leaves NaN as a float instead
+        # of stringifying it to "nan", which breaks downstream str ops/slicing.
+        seq = sub[SEQUENCE].fillna("").astype(str).str.replace(r"\s+", "", regex=True)
+        species = sub[SPECIES].fillna("").astype(str).str.strip()
+        name = sub[RECEPTOR_NAME].fillna("").astype(str).str.strip()
         for s, sp, n in zip(seq, species, name, strict=False):
             key = (s, sp)
             if key in wanted and key not in names:
