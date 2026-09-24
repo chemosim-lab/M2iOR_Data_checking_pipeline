@@ -73,7 +73,18 @@ _QUOTE_TO_APOSTROPHE = {
     "’": "'",  # RIGHT SINGLE QUOTATION MARK
 }
 
-_NAME_CHAR_REPLACEMENTS = {**_GREEK_TO_LATIN, **_DASH_TO_HYPHEN, **_QUOTE_TO_APOSTROPHE}
+# Racemic mixtures are marked "(±)-" in the input table but PubChem/CAS spell
+# it out as "+-" (e.g. "(±)-fenchone" vs "(+-)-Fenchone").
+_PLUSMINUS_TO_ASCII = {
+    "±": "+-",
+}
+
+_NAME_CHAR_REPLACEMENTS = {
+    **_GREEK_TO_LATIN,
+    **_DASH_TO_HYPHEN,
+    **_QUOTE_TO_APOSTROPHE,
+    **_PLUSMINUS_TO_ASCII,
+}
 
 
 _HTML_TAG_RE = re.compile(r"<[^>]+>")
@@ -87,7 +98,7 @@ _STEREO_PAREN_RE = re.compile(r"\(([ez])\)-?")
 
 def _normalize_name(text: str) -> str:
     """Lowercase a molecule name, strip HTML markup, spell out Greek letters
-    (e.g. 'β' -> 'beta'), normalize typographic dashes/quotes to their plain
+    (e.g. 'β' -> 'beta'), normalize typographic dashes/quotes/± to their plain
     ASCII form, and canonicalize E/Z vs. trans/cis stereodescriptors.
 
     CAS Common Chemistry's synonyms wrap stereodescriptors in formatting tags
