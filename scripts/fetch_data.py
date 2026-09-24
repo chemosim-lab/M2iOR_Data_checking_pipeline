@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -158,9 +159,10 @@ def fetch_uniprot_data(unique_accessions: list[str]) -> list[str]:
 
 _HTTP_OK = 200
 
+_NCBI_PROTEIN_ID_RE = re.compile(r'/protein_id="([^"]+)"')
 
 
-def _fetch_ncbi_protein(accession: str) -> dict[str, Any] | None:
+def _fetch_ncbi_protein_fasta(accession: str) -> dict[str, Any] | None:
     try:
         response = requests.get(
             _NCBI_EFETCH_URL,
@@ -198,6 +200,52 @@ def _fetch_ncbi_protein(accession: str) -> dict[str, Any] | None:
         }
 
 
+def _fetch_ncbi_nuccore_protein_id(accession: str) -> str | None:
+    """Look up the protein_id referenced by the CDS feature of a nucleotide record.
+
+    Some accessions we're given actually point to a nuccore (nucleotide) record
+    rather than a protein one (e.g. "KM229532.1"). In that case the real protein
+    sequence lives under a separate protein_id from the record's CDS feature
+    (e.g. "AIO10894.1"), so fetching db=protein directly fails.
+    """
+    try:
+        response = requests.get(
+            _NCBI_EFETCH_URL,
+            params={
+                "db": "nuccore",
+                "id": accession,
+                "rettype": "gb",
+                "retmode": "text",
+            },
+            timeout=15,
+        )
+        if response.status_code != _HTTP_OK:
+            return None
+        match = _NCBI_PROTEIN_ID_RE.search(response.text)
+        return match.group(1) if match else None
+    except requests.RequestException as e:
+        logger.info("  [NCBI] Failed to fetch nuccore record %s: %s", accession, e)
+        return None
+
+
+def _fetch_ncbi_protein(accession: str) -> dict[str, Any] | None:
+    data = _fetch_ncbi_protein_fasta(accession)
+    if data:
+        return data
+
+    time.sleep(_REQUEST_DELAY)
+    protein_id = _fetch_ncbi_nuccore_protein_id(accession)
+    if not protein_id:
+        return None
+    logger.info(
+        "  [NCBI] %s is a nucleotide accession, using its protein_id %s instead",
+        accession,
+        protein_id,
+    )
+    time.sleep(_REQUEST_DELAY)
+    return _fetch_ncbi_protein_fasta(protein_id)
+
+
 def fetch_ncbi_data(all_uids: list[str], failed_uids: list[str]) -> list[str]:
     """Try to fetch protein data from NCBI for UIDs that failed UniProt lookup.
     Returns (still_missing_uids)
@@ -211,6 +259,7 @@ def fetch_ncbi_data(all_uids: list[str], failed_uids: list[str]) -> list[str]:
     }
 
     still_missing: list[str] = []
+    calls_made = 0
     for accession in failed_uids:
         if accession.lower() == NOT_AVAILABLE.lower():
             # Already logged once in fetch_uniprot_data - no real ID to try here.
@@ -218,6 +267,11 @@ def fetch_ncbi_data(all_uids: list[str], failed_uids: list[str]) -> list[str]:
             continue
         if accession in ncbi_refs:
             continue  # already in cache from a previous run
+
+        if calls_made:
+            time.sleep(_REQUEST_DELAY)
+        calls_made += 1
+
         data = _fetch_ncbi_protein(accession)
         if data:
             logger.info("  [NCBI] %s ... ok", accession)
