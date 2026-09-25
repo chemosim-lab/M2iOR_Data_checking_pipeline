@@ -22,8 +22,13 @@ from typing import Any
 from scripts.molecule_stereo import export_stereo_classification
 
 _CACHE_DIR = Path("./cache/molecules")
-_DEFAULT_IMAGES_DIR = Path(
-    "/home/andre/Dev/M2iOR_migration/M2iOR/M2iOR_web_public-main/public/images/molecules"
+# The M2iOR website project is expected next to this pipeline's directory
+_DEFAULT_IMAGES_DIR = (
+    Path(__file__).resolve().parents[3]
+    / "M2iOR_web_public-main"
+    / "public"
+    / "images"
+    / "molecules"
 )
 
 

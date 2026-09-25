@@ -93,4 +93,4 @@ uv run python -m scripts.tools.lookup_molecule --excel input/X.xlsx --row 8 --ro
 uv run python -m scripts.tools.lookup_molecule --report r.json    # every molecule issue of a --check JSON report
 ```
 
-Note: the input directory (Excel studies) and output directory (M2iOR website data) are currently hardcoded as absolute paths at the top of [main.py](main.py) — update `M2IOR_WEB_PUBLIC_PATH` and `input_path` there if you run the pipeline on a different machine.
+Note: the input directory (Excel studies) is `input/`, and the output directory (M2iOR website data) is resolved as a sibling of this repository (`../M2iOR_web_public-main`). Both are set at the top of [main.py](main.py) (`input_path`, `M2IOR_WEB_PUBLIC_PATH`) — update them if your layout differs.

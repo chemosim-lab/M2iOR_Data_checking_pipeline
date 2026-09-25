@@ -111,9 +111,8 @@ from scripts.report import (
 if TYPE_CHECKING:
     from pandas import DataFrame
 
-M2IOR_WEB_PUBLIC_PATH = Path(
-    "/home/andre/Dev/M2iOR_migration/M2iOR/M2iOR_web_public-main"
-)
+# The M2iOR website project is expected next to this pipeline's directory
+M2IOR_WEB_PUBLIC_PATH = Path(__file__).resolve().parent.parent / "M2iOR_web_public-main"
 M2IOR_DATA_INPUT_PATH = M2IOR_WEB_PUBLIC_PATH / "resources" / "data"
 M2IOR_MOLECULE_IMAGES_PATH = M2IOR_WEB_PUBLIC_PATH / "public" / "images" / "molecules"
 REGISTRY_FILE = Path("./registry.json")
