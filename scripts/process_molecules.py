@@ -1,7 +1,8 @@
 # pipeline/scripts/process_molecules.py
 import re
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import colorlog
 import pandas as pd
@@ -406,6 +407,72 @@ def _cas_side_candidates(
     return _pooled_candidates(rcid, name_map, synonym_map)
 
 
+CidCasOutcome = Literal["agree", "keep_both", "fix_cas", "fix_cid", "conflict"]
+
+
+@dataclass
+class CidCasCheck:
+    """How the pipeline reconciles a single-CID row's CID with its CAS
+    number(s) - see `reconcile_cid_cas` for the rules."""
+
+    # CAS -> the (different) CID it resolves to
+    inconsistent: dict[str, int]
+    match_cid: bool = False
+    match_cas: bool = False
+    # First inconsistent CAS whose side the Molecule Name matches
+    matching_cas: str | None = None
+
+    @property
+    def outcome(self) -> CidCasOutcome:
+        if not self.inconsistent:
+            return "agree"
+        if self.match_cid and self.match_cas:
+            return "keep_both"
+        if self.match_cid:
+            return "fix_cas"
+        if self.match_cas:
+            return "fix_cid"
+        return "conflict"
+
+
+def check_cid_cas(
+    raw_name: object,
+    cid: int,
+    cas_list: list[str],
+    cas_to_cid_map: dict[str, int],
+    name_map: dict[int, str],
+    synonym_map: dict[int, list[str]],
+    cas_details_map: dict[str, dict[str, Any]],
+) -> CidCasCheck:
+    """Decide which of a single-CID row's CID and CAS number(s) its Molecule
+    Name confirms, when they don't resolve to the same compound. Pure: reads
+    only the given maps, so scripts/tools/lookup_molecule.py reuses it as is."""
+    inconsistent = {
+        cas: rcid
+        for cas in cas_list
+        if (rcid := cas_to_cid_map.get(cas)) is not None and rcid != cid
+    }
+    if not inconsistent:
+        return CidCasCheck(inconsistent={})
+
+    name = _normalize_name(str(raw_name)) if pd.notna(raw_name) else ""
+    cid_candidates = _pooled_candidates(cid, name_map, synonym_map)
+    per_cas_candidates = {
+        cas: _cas_side_candidates(cas, rcid, cas_details_map, name_map, synonym_map)
+        for cas, rcid in inconsistent.items()
+    }
+    cas_candidates: set[str] = set().union(*per_cas_candidates.values())
+    return CidCasCheck(
+        inconsistent=inconsistent,
+        match_cid=bool(name) and name in cid_candidates,
+        match_cas=bool(name) and name in cas_candidates,
+        matching_cas=next(
+            (cas for cas, candidates in per_cas_candidates.items() if name in candidates),
+            None,
+        ),
+    )
+
+
 def reconcile_cid_cas(
     df: pd.DataFrame,
     cas_to_cid_map: dict[str, int],
@@ -449,36 +516,24 @@ def reconcile_cid_cas(
         if not cas_list:
             continue
 
-        inconsistent = {
-            cas: rcid
-            for cas in cas_list
-            if (rcid := cas_to_cid_map.get(cas)) is not None and rcid != cid
-        }
-        if not inconsistent:
-            continue  # every resolvable CAS agrees with the table's CID
+        raw_name = mol.loc[idx, MOLECULE_NAME]
+        check = check_cid_cas(
+            raw_name, cid, cas_list, cas_to_cid_map, name_map, synonym_map, cas_details_map
+        )
+        # "agree": every resolvable CAS agrees with the table's CID;
+        # "keep_both": the Name confirms both sides - no ambiguity to flag.
+        if check.outcome in ("agree", "keep_both"):
+            continue
 
+        inconsistent = check.inconsistent
         mismatch_desc = ", ".join(
             f"{cas}→CID:{rcid}" for cas, rcid in inconsistent.items()
         )
-        raw_name = mol.loc[idx, MOLECULE_NAME]
-        name = _normalize_name(str(raw_name)) if pd.notna(raw_name) else ""
-
-        cid_candidates = _pooled_candidates(cid, name_map, synonym_map)
-        per_cas_candidates = {
-            cas: _cas_side_candidates(cas, rcid, cas_details_map, name_map, synonym_map)
-            for cas, rcid in inconsistent.items()
-        }
-        cas_candidates: set[str] = set().union(*per_cas_candidates.values())
-
-        match_cid = bool(name) and name in cid_candidates
-        match_cas = bool(name) and name in cas_candidates
         details = _conflict_details(
             raw_name, cid, cas_list, inconsistent, name_map, cas_details_map
         )
 
-        if match_cid and match_cas:
-            continue  # Name confirms both sides - no ambiguity to flag
-        if match_cid:
+        if check.outcome == "fix_cas":
             corrected_cas = cas_map.get(cid)
             logger.warning(
                 "  Molecule row %s: CAS(es) %s don't match the table's CID:%s - "
@@ -505,12 +560,10 @@ def reconcile_cid_cas(
                     details=details,
                 )
             )
-        elif match_cas:
-            new_cas, new_cid = next(
-                (cas, inconsistent[cas])
-                for cas, candidates in per_cas_candidates.items()
-                if name in candidates
-            )
+        elif check.outcome == "fix_cid":
+            new_cas = check.matching_cas
+            assert new_cas is not None  # match_cas implies a matching CAS
+            new_cid = inconsistent[new_cas]
             logger.warning(
                 "  Molecule row %s: CID:%s doesn't match CAS:%s - Name %r matches "
                 "the CAS side instead, correcting CID:%s → CID:%s.",
@@ -637,6 +690,45 @@ def _row_name_candidates(
     return pooled, per_cid_candidates
 
 
+def molecule_name_matches(
+    raw_name: object,
+    cids: list[int],
+    cas_list: list[str],
+    cas_details_map: dict[str, dict[str, Any]],
+    name_map: dict[int, str],
+    synonym_map: dict[int, list[str]],
+) -> bool | None:
+    """Whether a row's Molecule Name is among its CID(s)' PubChem
+    name/synonyms (or its CAS number(s)' CAS Common Chemistry ones), with the
+    rules of `validate_molecule_name_column`. None when nothing is cached to
+    compare against. Pure, reused by scripts/tools/lookup_molecule.py."""
+    pooled, per_cid_candidates = _row_name_candidates(
+        cids, cas_list, cas_details_map, name_map, synonym_map
+    )
+    if not pooled:
+        return None
+
+    # Only split on 'and'/commas for actual multi-CID mixture rows - a
+    # single-CID name is compared whole, since chemical nomenclature
+    # routinely contains commas that aren't mixture separators (e.g.
+    # "1,8-cineole", "2,3-butanedione", "2,4,5-trimethylthiazole").
+    if len(cids) > 1:
+        parts = [
+            p.strip()
+            for p in re.sub(r"\band\b", ",", str(raw_name), flags=re.IGNORECASE).split(",")
+            if p.strip()
+        ]
+    else:
+        parts = [str(raw_name).strip()]
+
+    if len(parts) == len(cids) and len(cids) > 1:
+        return not any(
+            candidates and not (_normalize_name_variants(part) & candidates)
+            for part, candidates in zip(parts, per_cid_candidates, strict=True)
+        )
+    return all(_normalize_name_variants(part) & pooled for part in parts)
+
+
 def validate_molecule_name_column(
     df: pd.DataFrame,
     cid_lists: pd.Series,
@@ -686,38 +778,11 @@ def validate_molecule_name_column(
             continue
 
         cas_list = parse_cas_cell(cas_col.get(idx))
-        pooled, per_cid_candidates = _row_name_candidates(
-            cids, cas_list, cas_details_map, name_map, synonym_map
+        matches = molecule_name_matches(
+            raw_name, cids, cas_list, cas_details_map, name_map, synonym_map
         )
-        if not pooled:
-            continue  # nothing cached to compare against
-
-        # Only split on 'and'/commas for actual multi-CID mixture rows - a
-        # single-CID name is compared whole, since chemical nomenclature
-        # routinely contains commas that aren't mixture separators (e.g.
-        # "1,8-cineole", "2,3-butanedione", "2,4,5-trimethylthiazole").
-        if len(cids) > 1:
-            parts = [
-                p.strip()
-                for p in re.sub(
-                    r"\band\b", ",", str(raw_name), flags=re.IGNORECASE
-                ).split(",")
-                if p.strip()
-            ]
-        else:
-            parts = [str(raw_name).strip()]
-
-        if len(parts) == len(cids) and len(cids) > 1:
-            mismatch = any(
-                candidates and not (_normalize_name_variants(part) & candidates)
-                for part, candidates in zip(parts, per_cid_candidates, strict=True)
-            )
-        else:
-            mismatch = any(
-                not (_normalize_name_variants(part) & pooled) for part in parts
-            )
-
-        if mismatch:
+        # None: nothing cached to compare against
+        if matches is False:
             mismatches.append((idx, str(raw_name), cids, cas_list))
 
     if mismatches:

@@ -44,6 +44,9 @@ _PUBCHEM_CAS_CID_URL = (
 _PUBCHEM_INCHIKEY_CID_URL = (
     "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/inchikey/{inchikey}/cids/JSON"
 )
+# POST endpoints: the identifier goes in the body, so any character in a
+# name or SMILES (e.g. "/") is safe.
+_PUBCHEM_CIDS_BY_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/{kind}/cids/JSON"
 _CAS_COMMON_CHEMISTRY_URL = "https://commonchemistry.cas.org/api/detail"
 _CAS_COMMON_CHEMISTRY_SANITY_CAS = "50-00-0"  # formaldehyde
 _APA_URL = "https://doi.org/{doi}"
@@ -817,6 +820,56 @@ def fetch_cas_to_cid_map(unique_cas: list[str]) -> dict[str, int]:
         )
 
     return cas_to_cid
+
+
+_HTTP_NOT_FOUND = 404
+
+
+def _fetch_cids_by(kind: Literal["name", "smiles", "inchikey"], value: str) -> list[int] | None:
+    """PubChem CIDs matching a compound name, SMILES or InChIKey, cached in
+    cache/<kind>_to_cids. A definitive "not found" is cached as an empty
+    list; a transient failure returns None and isn't cached."""
+    key = value.strip()
+    subdir = f"{kind}_to_cids"
+    cached = get_cache(key, subdir=subdir)
+    if cached is not None:
+        return cached["cids"]
+    try:
+        response = requests.post(
+            _PUBCHEM_CIDS_BY_URL.format(kind=kind), data={kind: key}, timeout=15
+        )
+    except requests.RequestException as e:
+        logger.info("  [PubChem] %s lookup failed for %r: %s", kind, key, e)
+        return None
+    finally:
+        time.sleep(_REQUEST_DELAY)
+    if response.status_code == _HTTP_NOT_FOUND:
+        cids: list[int] = []
+    elif response.status_code == _HTTP_OK:
+        # A structure PubChem doesn't know comes back as CID 0.
+        cids = [c for c in response.json().get("IdentifierList", {}).get("CID", []) if c]
+    else:
+        logger.info(
+            "  [PubChem] %s lookup for %r: HTTP %d", kind, key, response.status_code
+        )
+        return None
+    set_cache(key, {"cids": cids}, subdir=subdir)
+    return cids
+
+
+def fetch_cids_by_name(name: str) -> list[int] | None:
+    """PubChem CIDs whose name or synonym matches `name` (see `_fetch_cids_by`)."""
+    return _fetch_cids_by("name", name)
+
+
+def fetch_cids_by_smiles(smiles: str) -> list[int] | None:
+    """PubChem CIDs of the structure given as SMILES (see `_fetch_cids_by`)."""
+    return _fetch_cids_by("smiles", smiles)
+
+
+def fetch_cids_by_inchikey(inchikey: str) -> list[int] | None:
+    """PubChem CIDs with this InChIKey (see `_fetch_cids_by`)."""
+    return _fetch_cids_by("inchikey", inchikey)
 
 
 def fetch_cids_from_cas(df: pd.DataFrame) -> list[int]:

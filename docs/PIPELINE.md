@@ -31,6 +31,7 @@ M2iOR_Data_checking_pipeline/
     └── tools/                           # Standalone tools, outside the main flow
         ├── split_by_doi.py              # Splits a multi-study Excel file into one file per study
         ├── backfill_stereo_images.py    # Regenerates structure images without rerunning the full pipeline
+        ├── lookup_molecule.py           # Diagnoses a molecule row's Name/CID/CAS and suggests corrections
         └── get_common_name.py           # Translates a species name into an NCBI taxonomy identifier
 ```
 
@@ -78,4 +79,5 @@ M2iOR_Data_checking_pipeline/
 
 ### 9. Ancillary tools (one-off usage, outside the main flow)
 - **`scripts/tools/split_by_doi.py`** — splits a multi-study Excel file into one file per study, ahead of the pipeline.
+- **`scripts/tools/lookup_molecule.py`** — looks up a molecule by name, CID, CAS, SMILES or InChIKey and diagnoses an Excel row's Name/CID/CAS consistency with the pipeline's own sources, cache and rules (`check_cid_cas` and `molecule_name_matches` in `scripts/process_molecules.py`); candidate corrections are re-checked with those rules. Read-only.
 - **`scripts/extract_receptors.py`** — extracts the list of unique receptors (standalone utility).

@@ -83,4 +83,14 @@ Each issue gives its severity, stage, code, sheet, Excel column/rows/cells, valu
 
 `--blast` controls pending BLAST lookups: `ask` prompts (default, except for `--check`), `cached` never runs one and only applies cached results (default for `--check`), `run` runs every new or retryable lookup without asking.
 
+#### Molecule lookup
+
+`scripts/tools/lookup_molecule.py` looks up a molecule by name, CID, CAS, SMILES or InChIKey with the pipeline's own sources, cache and rules, and diagnoses an Excel row's Name/CID/CAS consistency: how the pipeline treats the row, what each identifier actually is, and candidate corrections, each re-checked with the pipeline's rules. It never modifies the Excel file. Run it from the project root; it prints JSON.
+
+```bash
+uv run python -m scripts.tools.lookup_molecule --name "4-Methylcyclohexanol" --cas 25639-42-3
+uv run python -m scripts.tools.lookup_molecule --excel input/X.xlsx --row 8 --row 17
+uv run python -m scripts.tools.lookup_molecule --report r.json    # every molecule issue of a --check JSON report
+```
+
 Note: the input directory (Excel studies) and output directory (M2iOR website data) are currently hardcoded as absolute paths at the top of [main.py](main.py) — update `M2IOR_WEB_PUBLIC_PATH` and `input_path` there if you run the pipeline on a different machine.
