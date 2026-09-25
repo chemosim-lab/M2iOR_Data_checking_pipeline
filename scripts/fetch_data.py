@@ -6,7 +6,7 @@ import os
 import re
 import time
 from pathlib import Path
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Literal
 
 import colorlog
 import requests
@@ -26,6 +26,7 @@ from scripts.fetch_blast import (
 )
 from scripts.process_molecules import normalize_dashes, parse_cid_cell
 from scripts.process_receptors import NOT_AVAILABLE, resolve_missing_accessions_via_blast
+from scripts.report import Issue, emit
 
 logger = colorlog.getLogger(__name__)
 
@@ -410,12 +411,53 @@ def _select_blast_candidates(
     return [candidates[i - 1] for i in selected]
 
 
+# How pending BLAST lookups are handled: "ask" prompts for which to run,
+# "cached" runs none (only already-cached results are applied), "run" runs
+# every new or retryable one without asking.
+BlastMode = Literal["ask", "cached", "run"]
+
+
+def _select_blast_candidates_non_interactive(
+    candidates: list[_BlastCandidate], mode: BlastMode
+) -> list[_BlastCandidate]:
+    if mode == "run":
+        # A definitive "no hit" is never worth re-running unattended.
+        return [c for c in candidates if c.category in ("new", "retry")]
+    pending = [c for c in candidates if c.category in ("new", "retry")]
+    if pending:
+        logger.warning(
+            "%d BLAST lookup(s) pending, not run (--blast cached).", len(pending)
+        )
+        emit(
+            Issue(
+                severity="warning",
+                code="blast_pending",
+                message=f"{len(pending)} sequence(s) without a usable accession "
+                "need a BLAST lookup that wasn't run (--blast cached); their "
+                "rows keep an empty accession.",
+                details={
+                    "queries": [
+                        {
+                            "receptor_name": c.receptor_name,
+                            "species": c.species,
+                            "category": c.category,
+                            "sequence_start": c.seq[:20],
+                        }
+                        for c in pending
+                    ]
+                },
+            )
+        )
+    return []
+
+
 def fetch_genbank_data(
     df: pd.DataFrame,
     protein_groups: list[str],
     blast_queries: list[tuple[str, str]],
     *,
     force_blast: bool = False,
+    mode: BlastMode = "ask",
 ) -> dict[str, str]:
     if not blast_queries:
         return {}
@@ -445,7 +487,11 @@ def fetch_genbank_data(
         candidates = _build_blast_candidates(
             df, protein_groups, new_queries, retryable, no_hit, cached_ok
         )
-        selected = _select_blast_candidates(candidates)
+        selected = (
+            _select_blast_candidates(candidates)
+            if mode == "ask"
+            else _select_blast_candidates_non_interactive(candidates, mode)
+        )
         if not selected:
             logger.info("Skipping BLAST lookups, continuing without new BLAST results.")
         else:
@@ -559,6 +605,17 @@ def _cas_common_chemistry_key_is_valid(api_key: str) -> bool:
     return response.status_code not in (401, 403)
 
 
+def _report_cas_api_unavailable(reason: str) -> None:
+    emit(
+        Issue(
+            severity="warning",
+            code="cas_api_unavailable",
+            message=f"{reason}: CAS numbers missing from the cache are checked "
+            "against PubChem only, not CAS Common Chemistry.",
+        )
+    )
+
+
 def fetch_cas_common_chemistry_details(
     unique_cas: list[str],
 ) -> dict[str, dict[str, Any]]:
@@ -586,6 +643,7 @@ def fetch_cas_common_chemistry_details(
             "CAS_API_KEY not set - skipping CAS Common Chemistry, falling back "
             "to PubChem for CAS number(s) (see .env.example)."
         )
+        _report_cas_api_unavailable("CAS_API_KEY is not set")
         return {}
 
     details: dict[str, dict[str, Any]] = {
@@ -605,6 +663,7 @@ def fetch_cas_common_chemistry_details(
             "CAS Common Chemistry rejected CAS_API_KEY (401/403) - skipping it for "
             "this run, falling back to PubChem for CAS number(s)."
         )
+        _report_cas_api_unavailable("CAS Common Chemistry rejected CAS_API_KEY (401/403)")
         return details
 
     logger.info(

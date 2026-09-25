@@ -9,6 +9,7 @@ import pandas as pd
 from scripts.cache_manager import get_cache
 from scripts.columns import CAS, CID, INCHIKEY, MIXTURE, MOLECULE, MOLECULE_NAME, SMILES
 from scripts.molecule_stereo import export_stereo_classification
+from scripts.report import Issue, ValidationError, emit
 
 logger = colorlog.getLogger(__name__)
 
@@ -196,9 +197,20 @@ def validate_cid_or_cas(df: pd.DataFrame) -> None:
     unresolved = both_missing & ~allowed_mixture
     if unresolved.any():
         rows = unresolved[unresolved].index.tolist()
-        raise ValueError(
-            f"Molecule row(s) with neither CID nor CAS at index(es): {rows}"
-        )
+        issues = [
+            Issue(
+                code="cid_and_cas_missing",
+                message="Molecule has neither a usable CID nor a CAS number.",
+                group=MOLECULE,
+                column=CID,
+                rows=[idx],
+                value=mol.loc[idx, CID],
+                details={"molecule_name": mol.loc[idx, MOLECULE_NAME]},
+            )
+            for idx in rows
+        ]
+        msg = f"Molecule row(s) with neither CID nor CAS at index(es): {rows}"
+        raise ValidationError(msg, issues)
 
 
 def get_unique_cids(df: pd.DataFrame) -> list[int]:
@@ -426,6 +438,7 @@ def reconcile_cid_cas(
     cas_details_map = cas_details_map or {}
     mol = df[MOLECULE]
     blocked: list[tuple[int, str]] = []
+    blocked_issues: list[Issue] = []
 
     for idx in mol.index:
         cids = parse_cid_cell(mol.loc[idx, CID])
@@ -459,6 +472,9 @@ def reconcile_cid_cas(
 
         match_cid = bool(name) and name in cid_candidates
         match_cas = bool(name) and name in cas_candidates
+        details = _conflict_details(
+            raw_name, cid, cas_list, inconsistent, name_map, cas_details_map
+        )
 
         if match_cid and match_cas:
             continue  # Name confirms both sides - no ambiguity to flag
@@ -473,6 +489,21 @@ def reconcile_cid_cas(
                 cid,
                 raw_name,
                 corrected_cas or "<no CAS found in PubChem's record for this CID>",
+            )
+            emit(
+                Issue(
+                    severity="auto_fix",
+                    code="cas_mismatch_cid",
+                    message="CAS resolves to a different compound than the CID; "
+                    "the Molecule Name matches the CID, so the pipeline replaces "
+                    "the CAS with the CID's own.",
+                    group=MOLECULE,
+                    column=CAS,
+                    rows=[idx],
+                    value=mol.loc[idx, CAS],
+                    suggested_value=corrected_cas,
+                    details=details,
+                )
             )
         elif match_cas:
             new_cas, new_cid = next(
@@ -493,10 +524,36 @@ def reconcile_cid_cas(
             # The CID column's dtype (string, int64...) depends on what the
             # source Excel held; widen to object first so it accepts the
             # corrected value regardless, stored as text like every other CID.
+            emit(
+                Issue(
+                    severity="auto_fix",
+                    code="cid_mismatch_cas",
+                    message=f"CID doesn't match CAS {new_cas}; the Molecule Name "
+                    "matches the CAS side, so the pipeline replaces the CID.",
+                    group=MOLECULE,
+                    column=CID,
+                    rows=[idx],
+                    value=mol.loc[idx, CID],
+                    suggested_value=str(new_cid),
+                    details=details,
+                )
+            )
             _ensure_object_dtype(df, (MOLECULE, CID))
             df.loc[idx, (MOLECULE, CID)] = str(new_cid)
         else:
             blocked.append((idx, str(raw_name)))
+            blocked_issues.append(
+                Issue(
+                    code="cid_cas_name_conflict",
+                    message="CID and CAS refer to different compounds and the "
+                    "Molecule Name matches neither.",
+                    group=MOLECULE,
+                    column=CID,
+                    rows=[idx],
+                    value=mol.loc[idx, CID],
+                    details=details,
+                )
+            )
 
     if blocked:
         rows = ", ".join(f"{idx} ({name!r})" for idx, name in blocked)
@@ -504,7 +561,39 @@ def reconcile_cid_cas(
             "Molecule row(s) with a CID/CAS mismatch whose Name matches neither "
             f"reference's PubChem name/synonyms: {rows}"
         )
-        raise ValueError(msg)
+        raise ValidationError(msg, blocked_issues)
+
+
+def _conflict_details(
+    raw_name: object,
+    cid: int,
+    cas_list: list[str],
+    inconsistent: dict[str, int],
+    name_map: dict[int, str],
+    cas_details_map: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    """What each registry says about a row's CID and CAS number(s), for the
+    report of a CID/CAS disagreement."""
+    return {
+        "molecule_name": raw_name,
+        "cid": cid,
+        "cid_pubchem_name": name_map.get(cid),
+        "cas": cas_list,
+        "cas_to_cid": inconsistent,
+        "cas_common_chemistry_names": {
+            cas: (cas_details_map.get(cas) or {}).get("name") for cas in cas_list
+        },
+        "cas_cid_pubchem_names": {
+            cas: name_map.get(rcid) for cas, rcid in inconsistent.items()
+        },
+        "urls": _reference_url_list([cid, *inconsistent.values()], cas_list),
+    }
+
+
+def _reference_url_list(cids: list[int], cas_list: list[str]) -> list[str]:
+    urls = [_PUBCHEM_COMPOUND_URL.format(cid=cid) for cid in dict.fromkeys(cids)]
+    urls += [_CAS_COMMON_CHEMISTRY_DETAIL_URL.format(cas=cas) for cas in cas_list]
+    return urls
 
 
 def _reference_urls(cids: list[int], cas_list: list[str]) -> str:
@@ -554,6 +643,7 @@ def validate_molecule_name_column(
     name_map: dict[int, str],
     synonym_map: dict[int, list[str]],
     cas_details_map: dict[str, dict[str, Any]] | None = None,
+    skip_rows: set[int] | None = None,
 ) -> None:
     """Raise ValueError if a row's Molecule Name isn't among its CID(s)' PubChem
     name/synonyms, or its CAS number(s)' CAS Common Chemistry name/synonyms.
@@ -579,14 +669,18 @@ def validate_molecule_name_column(
     rather than requiring PubChem specifically to.
 
     Rows without a Molecule Name, or with nothing cached to compare against
-    from either source, are skipped.
+    from either source, are skipped, as are `skip_rows` (rows already
+    reported by `reconcile_cid_cas`).
     """
     cas_details_map = cas_details_map or {}
+    skip_rows = skip_rows or set()
     name_col = df[MOLECULE][MOLECULE_NAME]
     cas_col = df[MOLECULE][CAS]
     mismatches: list[tuple[int, str, list[int], list[str]]] = []
 
     for idx, cids in cid_lists.items():
+        if idx in skip_rows:
+            continue
         raw_name = name_col.get(idx)
         if pd.isna(raw_name) or not str(raw_name).strip():
             continue
@@ -635,7 +729,30 @@ def validate_molecule_name_column(
             f"Column '{MOLECULE_NAME}' has value(s) not found among the "
             f"corresponding CID's PubChem name/synonyms:\n{lines}"
         )
-        raise ValueError(msg)
+        issues = [
+            Issue(
+                code="molecule_name_mismatch",
+                message="Molecule Name not found among the PubChem name/synonyms "
+                "of its CID(s), nor the CAS Common Chemistry name/synonyms of its "
+                "CAS number(s).",
+                group=MOLECULE,
+                column=MOLECULE_NAME,
+                rows=[idx],
+                value=name,
+                details={
+                    "cids": cids,
+                    "cid_pubchem_names": {cid: name_map.get(cid) for cid in cids},
+                    "cas": cas_list,
+                    "cas_common_chemistry_names": {
+                        cas: (cas_details_map.get(cas) or {}).get("name")
+                        for cas in cas_list
+                    },
+                    "urls": _reference_url_list(cids, cas_list),
+                },
+            )
+            for idx, name, cids, cas_list in mismatches
+        ]
+        raise ValidationError(msg, issues)
 
 
 def _export_synonyms_csv(synonym_map: dict[int, list[str]], output_dir: Path) -> None:
@@ -662,20 +779,42 @@ def process_molecules(
         cache_cids
     )
 
-    reconcile_cid_cas(
-        df,
-        cas_to_cid_map,
-        name_map,
-        synonym_map,
-        cas_map=cas_map,
-        cas_details_map=cas_details_map,
-    )
+    # Both checks run before failing, so a single run reports every problem.
+    failures: list[ValidationError] = []
+    blocked_rows: set[int] = set()
+    try:
+        reconcile_cid_cas(
+            df,
+            cas_to_cid_map,
+            name_map,
+            synonym_map,
+            cas_map=cas_map,
+            cas_details_map=cas_details_map,
+        )
+    except ValidationError as e:
+        failures.append(e)
+        blocked_rows = {row for issue in e.issues for row in issue.rows}
 
     # Re-extract: reconcile_cid_cas may have corrected some rows' CID.
     cid_lists, unique_cids = _extract_cid_lists(df)
-    validate_molecule_name_column(
-        df, cid_lists, name_map, synonym_map, cas_details_map=cas_details_map
-    )
+    try:
+        validate_molecule_name_column(
+            df,
+            cid_lists,
+            name_map,
+            synonym_map,
+            cas_details_map=cas_details_map,
+            skip_rows=blocked_rows,
+        )
+    except ValidationError as e:
+        failures.append(e)
+
+    if failures:
+        raise ValidationError(
+            "\n".join(str(e) for e in failures),
+            [issue for e in failures for issue in e.issues],
+        )
+
     _enrich_molecule_columns(df, cid_lists, name_map, cas_map, inchikey_map, smiles_map)
     _export_synonyms_csv(synonym_map, output_dir)
 

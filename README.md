@@ -65,6 +65,22 @@ uv run main.py --all             # Reprocess every study, ignoring DONE/FAILED s
 uv run main.py --file <path>     # Process a single Excel file
 uv run main.py --force           # Reprocess every study and force BLAST re-queries
 uv run main.py --force <path>    # Reprocess a single file and force BLAST re-queries
+uv run main.py --check <path>    # Validate a single file without exporting anything, report every issue
 ```
+
+#### Check mode and reports
+
+`--check` runs every validation stage on one Excel file and reports all the issues it finds, without writing any CSV, image or registry entry (external API results are still cached). Its exit code is `0` when nothing blocks the export, `1` on validation errors, `2` on a pipeline crash or a usage error.
+
+```bash
+uv run main.py --check input/X.xlsx                                  # human-readable report
+uv run main.py --check input/X.xlsx --report json                    # JSON report on stdout (logs on stderr)
+uv run main.py --check input/X.xlsx --report json --report-file r.json
+uv run main.py --file input/X.xlsx --blast cached --report json      # export, non-interactive, with its report
+```
+
+Each issue gives its severity, stage, code, sheet, Excel column/rows/cells, value and, when possible, a suggested value. Only `error` issues block the export; `warning` (needs a human look, e.g. rows the Laravel import will skip), `auto_fix` (a value the pipeline silently rewrites, e.g. a receptor name or a CID/CAS it corrects) and `info` never change what the pipeline accepts.
+
+`--blast` controls pending BLAST lookups: `ask` prompts (default, except for `--check`), `cached` never runs one and only applies cached results (default for `--check`), `run` runs every new or retryable lookup without asking.
 
 Note: the input directory (Excel studies) and output directory (M2iOR website data) are currently hardcoded as absolute paths at the top of [main.py](main.py) — update `M2IOR_WEB_PUBLIC_PATH` and `input_path` there if you run the pipeline on a different machine.

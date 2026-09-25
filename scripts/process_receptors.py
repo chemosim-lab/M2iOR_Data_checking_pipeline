@@ -22,6 +22,7 @@ from scripts.columns import (
 )
 from scripts.fetch_blast import fetch_blast_reference
 from scripts.find_protein_mutations import align_and_annotate
+from scripts.report import Issue, ValidationError, emit
 
 logger = colorlog.getLogger(__name__)
 
@@ -35,12 +36,13 @@ NOT_AVAILABLE = "Not available"
 # a genuinely divergent sequence worth double-checking.
 IDENTITY_WARNING_THRESHOLD = 95.0
 
-_OR_NAME_RE = re.compile(r"^Or\d+(?:-\d+)?[a-z]?$")
+# Receptor names only ever come from the Excel file. A loosely formatted
+# "OR5"/"or22A" is tolerated and reformatted; anything else must be
+# corrected in the source.
 _OR_NAME_RE_LOOSE = re.compile(r"^Or(\d+)(-\d+)?([a-zA-Z]?)$", re.IGNORECASE)
 _ORCO_RE_LOOSE = re.compile(r"^Orco$", re.IGNORECASE)
-_OR_FROM_DESC_RE = re.compile(
-    r"olfactory\s+receptor\s+(?:Or)?(\d+)(-\d+)?([a-zA-Z]?)", re.IGNORECASE
-)
+# Canonical name buried at the end of a non-canonical one ("BimOR34" -> "Or34").
+_TRAILING_OR_NAME_RE = re.compile(r"or(co|\d+(?:-\d+)?[a-z]?)$", re.IGNORECASE)
 
 
 def get_unique_accessions(
@@ -79,38 +81,18 @@ def _get_normalized_receptor_name(names: list[str]) -> str | None:
     return None
 
 
-def _extract_receptor_name_data(data: dict[str, Any]) -> dict[str, Any]:
-    """Pull a gene name and its synonyms out of a UniProt cache entry.
-
-    Neither field is guaranteed: an automated/unreviewed (TrEMBL) entry with
-    a low annotation score commonly has no 'genes' key at all - that's a
-    legitimate UniProt shape, not a malformed cache, so it's treated as "no
-    gene name" rather than an error. `_get_receptor_name` falls back to the
-    protein description, and ultimately the raw accession, when this comes
-    back empty.
-    """
+def _reference_record_name(uid: str) -> str | None:
+    """What the accession's cached UniProt/NCBI record calls the protein -
+    reported as a hint when rows disagree on an accession's receptor, never
+    used as a Receptor Name (it's no reliable source for the Or name)."""
+    data: dict[str, Any] | None = get_cache(uid, subdir="receptors")
+    if not data:
+        return None
+    if data.get("source") == "ncbi":
+        return data.get("protein_description")
     genes: list[dict[str, Any]] = data.get("genes") or []
-    gene_name = genes[0].get("geneName", {}).get("value") if genes else None
-
-    synonyms_data: list[dict[str, str]] | None = data.get("synonyms")
-    synonyms = [syn["value"] for syn in synonyms_data] if synonyms_data else None
-
-    return {"geneName": gene_name, "synonyms": synonyms}
-
-
-def _extract_or_name_from_description(desc: str) -> str | None:
-    """Extract a normalized Or<N>[-N][a-z] name from a protein description string."""
-    m = _OR_FROM_DESC_RE.search(desc)
-    if m:
-        return "Or" + m.group(1) + (m.group(2) or "") + m.group(3).lower()
-    return None
-
-
-def _uniprot_protein_description(data: dict[str, Any]) -> str | None:
-    """Best-effort protein description text, for description-based receptor
-    name extraction (see `_extract_or_name_from_description`). An
-    automated/unreviewed (TrEMBL) entry commonly has no recommendedName and
-    only a submissionName instead."""
+    if genes and (gene_name := genes[0].get("geneName", {}).get("value")):
+        return gene_name
     desc = data.get("proteinDescription") or {}
     if full := desc.get("recommendedName", {}).get("fullName", {}).get("value"):
         return full
@@ -120,54 +102,30 @@ def _uniprot_protein_description(data: dict[str, Any]) -> str | None:
     return None
 
 
-def _get_receptor_name(uid: str) -> str | None:
-
-    data: dict[str, Any] | None = get_cache(uid, subdir="receptors")
-    if not data:
-        msg = f"UID: in _get_receptor_name [{uid}] Cache not found for this UID."
-        raise ValueError(msg)
-    receptor_name_data: dict[str, Any] = _extract_receptor_name_data(data)
-
-    receptor_name = receptor_name_data.get("geneName") or ""
-    synonyms: list[str] = receptor_name_data.get("synonyms") or []
-
-    normalized_receptor_name: str | None = _get_normalized_receptor_name(
-        [receptor_name, *synonyms]
-    )
-    if normalized_receptor_name:
-        return normalized_receptor_name
-
-    # NCBI fallback: extract Or<N> from protein description, or use accession
-    if data.get("source") == "ncbi":
-        protein_desc: str = data.get("protein_description") or ""
-        if protein_desc:
-            from_desc = _extract_or_name_from_description(protein_desc)
-            if from_desc:
-                return from_desc
-        return uid  # last resort: raw accession number
-
-    if receptor_name:
-        return receptor_name
-
-    # UniProt fallback: an automated/unreviewed entry with no gene name (e.g.
-    # a low annotation-score TrEMBL record) may still spell out an Or<N> in
-    # its protein description.
-    uniprot_desc = _uniprot_protein_description(data)
-    if uniprot_desc:
-        from_desc = _extract_or_name_from_description(uniprot_desc)
-        if from_desc:
-            return from_desc
-
-    msg = (
-        f"UID:[{uid}] No Or<N>[a-z] receptor name found - "
-        f"geneName={receptor_name!r}, synonyms={receptor_name_data.get('synonyms')}"
-    )
-    raise ValueError(msg)
+def _is_blank(value: object) -> bool:
+    return pd.isna(value) or str(value).strip() in ("", "nan")
 
 
 def process_receptors_name_columns(
-    df: pd.DataFrame, groups: list[str], all_unique_uniprot_ids: list[str]
+    df: pd.DataFrame,
+    groups: list[str],
+    all_unique_uniprot_ids: list[str],
+    excel_accessions: dict[str, pd.Series] | None = None,
 ) -> None:
+    """Set each row's Receptor Name from the Excel file, then its Species.
+
+    Names only ever come from the Excel file, never from the accession's
+    UniProt/NCBI record: a loosely formatted "OR5"/"or22A" is reformatted
+    ("Or5", "Or22a"), but an empty name, a name that isn't an Or<N>/Orco
+    name, or different names sharing an accession typed in the Excel file
+    are blocking errors, to correct in the source.
+
+    `excel_accessions` holds each group's accessions as typed in the Excel
+    file, before BLAST filled the empty ones: different receptors whose
+    sequences BLAST to the same reference only get a warning, and all take
+    the first name (one name per accession, as the website's database
+    expects). Without it, every accession counts as typed in the Excel file.
+    """
 
     found_receptor_names_by_uid: dict[str, list[str]] = {}
     for group in groups:
@@ -189,22 +147,190 @@ def process_receptors_name_columns(
                 str(name).strip() for name in names if pd.notna(name)
             ]
 
-    receptor_name_by_uid: dict[str, str | None] = {}
-    for uid in all_unique_uniprot_ids:
-        found_receptor_names: list[str] = found_receptor_names_by_uid.get(uid, [""])
-        normalized = _get_normalized_receptor_name(found_receptor_names)
-        if normalized:
-            receptor_name_by_uid[uid] = normalized
-        else:
-            receptor_name_by_uid[uid] = _get_receptor_name(uid)
+    receptor_name_by_uid: dict[str, str | None] = {
+        uid: _get_normalized_receptor_name(found_receptor_names_by_uid.get(uid, [""]))
+        for uid in all_unique_uniprot_ids
+    }
 
+    original_names = {group: df[group][RECEPTOR_NAME].copy() for group in groups}
     for group in groups:
         receptors_names = df[group][ACCESSION].map(receptor_name_by_uid)
+        # "Not available" is a placeholder shared by unrelated receptors, not
+        # an identity: those rows keep their own name.
+        placeholder = (
+            df[group][ACCESSION].astype(str).str.strip().str.lower()
+            == NOT_AVAILABLE.lower()
+        )
+        receptors_names[placeholder] = [
+            _get_normalized_receptor_name([str(name).strip()])
+            if pd.notna(name)
+            else None
+            for name in original_names[group][placeholder]
+        ]
         df.loc[:, (group, RECEPTOR_NAME)] = receptors_names.astype(
             df[group][RECEPTOR_NAME].dtype
         )
+    blocking = _review_receptor_names(df, groups, original_names, excel_accessions)
 
     enrich_species_column(df, groups, all_unique_uniprot_ids)
+
+    if blocking:
+        problems = dict.fromkeys(
+            f"{issue.group} {issue.code} ({issue.value!r})" for issue in blocking
+        )
+        msg = "Receptor Name problem(s) to correct in the Excel file: " + "; ".join(
+            problems
+        )
+        raise ValidationError(msg, blocking)
+
+
+def suggest_canonical_receptor_name(name: str) -> str | None:
+    """Canonical Or<N>/Orco name ending a non-canonical one, e.g. "BimOR34"
+    -> "Or34", "AgamOrco" -> "Orco"; None if there's none."""
+    m = _TRAILING_OR_NAME_RE.search(name.strip())
+    if not m:
+        return None
+    suffix = m.group(1)
+    return "Orco" if suffix.lower() == "co" else "Or" + suffix.lower()
+
+
+def _review_receptor_names(
+    df: pd.DataFrame,
+    groups: list[str],
+    original_names: dict[str, pd.Series],
+    excel_accessions: dict[str, pd.Series] | None,
+) -> list[Issue]:
+    """Check every Excel Receptor Name; return the blocking issues and emit
+    the non-blocking ones. See `process_receptors_name_columns` for the rules.
+
+    Suggestions only ever come from the Excel value itself (e.g. "OR5" ->
+    "Or5", "BimOR34" -> "Or34")."""
+    # Every receptor the Excel file gives each accession, across groups.
+    names_by_accession: dict[str, set[str]] = {}
+    sequences_by_accession: dict[str, set[str]] = {}
+    for group in groups:
+        accessions = df[group][ACCESSION].astype(str).str.strip()
+        sequences = df[group][SEQUENCE]
+        for idx, name in original_names[group].items():
+            if _is_blank(name) or _is_blank(accessions[idx]):
+                continue
+            if accessions[idx].lower() == NOT_AVAILABLE.lower():
+                continue
+            normalized = _get_normalized_receptor_name([str(name).strip()])
+            if normalized is None:
+                continue  # reported on its own as receptor_name_invalid
+            names_by_accession.setdefault(accessions[idx], set()).add(normalized)
+            if not _is_blank(sequences[idx]):
+                sequences_by_accession.setdefault(accessions[idx], set()).add(
+                    "".join(str(sequences[idx]).split()).upper()
+                )
+
+    blocking: list[Issue] = []
+    for group in groups:
+        accessions = df[group][ACCESSION]
+        sequences = df[group][SEQUENCE]
+        final_names = df[group][RECEPTOR_NAME]
+        for idx in df.index:
+            old = original_names[group][idx]
+            old = "" if _is_blank(old) else str(old).strip()
+            accession = "" if _is_blank(accessions[idx]) else str(accessions[idx]).strip()
+            if not (old or accession or not _is_blank(sequences[idx])):
+                continue  # no receptor on this row (e.g. no co-receptor)
+            details: dict[str, Any] = {"accession": accession or None}
+
+            if not old:
+                blocking.append(
+                    Issue(
+                        code="receptor_name_missing",
+                        message="Receptor Name is empty; fill it in the Excel file "
+                        "(it is never taken from UniProt/NCBI).",
+                        group=group,
+                        column=RECEPTOR_NAME,
+                        rows=[idx],
+                        details=details,
+                    )
+                )
+                continue
+
+            normalized = _get_normalized_receptor_name([old])
+            if normalized is None:
+                blocking.append(
+                    Issue(
+                        code="receptor_name_invalid",
+                        message="Receptor Name isn't an Or<N>[a-z]/Orco name; "
+                        "correct it in the Excel file.",
+                        group=group,
+                        column=RECEPTOR_NAME,
+                        rows=[idx],
+                        value=old,
+                        suggested_value=suggest_canonical_receptor_name(old),
+                        details=details,
+                    )
+                )
+                continue
+
+            names = names_by_accession.get(accession, set())
+            if len(names) > 1:
+                details |= {
+                    "receptor_name": normalized,
+                    "names_for_accession": sorted(names),
+                    "identical_sequences": len(
+                        sequences_by_accession.get(accession, set())
+                    )
+                    == 1,
+                    "reference_record_name": _reference_record_name(accession),
+                }
+                from_excel = excel_accessions is None or not _is_blank(
+                    excel_accessions[group].get(idx)
+                )
+                if from_excel:
+                    blocking.append(
+                        Issue(
+                            code="receptor_accession_shared",
+                            message="Receptors with different names have the same "
+                            "accession in the Excel file; the accession (or the "
+                            "name) is wrong.",
+                            group=group,
+                            column=ACCESSION,
+                            rows=[idx],
+                            value=accession,
+                            details=details,
+                        )
+                    )
+                else:
+                    details["pipeline_name"] = final_names[idx]
+                    emit(
+                        Issue(
+                            severity="warning",
+                            code="receptor_blast_hit_shared",
+                            message="Receptors with different names and no "
+                            "accession in the Excel file got the same accession "
+                            "from BLAST; the pipeline gives all of them the first "
+                            "name.",
+                            group=group,
+                            column=ACCESSION,
+                            rows=[idx],
+                            value=accession,
+                            details=details,
+                        )
+                    )
+                continue
+
+            if normalized != old:
+                emit(
+                    Issue(
+                        severity="auto_fix",
+                        code="receptor_name_format",
+                        message="Receptor Name isn't in the canonical Or<N>[a-z]/Orco "
+                        "format; the pipeline reformats the Excel value.",
+                        group=group,
+                        column=RECEPTOR_NAME,
+                        rows=[idx],
+                        value=old,
+                        suggested_value=normalized,
+                    )
+                )
+    return blocking
 
 
 def enrich_species_column(
@@ -243,6 +369,20 @@ def enrich_species_column(
         has_reported = reported_raw.notna() & (reported != "")
         mismatch = mask & has_reported & (reported.str.lower() != updated.str.lower())
         for idx in df.index[mismatch]:
+            emit(
+                Issue(
+                    severity="auto_fix",
+                    code="species_mismatch",
+                    message="Species differs from the organism of the accession's "
+                    "UniProt record; the pipeline replaces it.",
+                    group=group,
+                    column=SPECIES,
+                    rows=[idx],
+                    value=reported[idx],
+                    suggested_value=updated[idx],
+                    details={"accession": uid_col[idx]},
+                )
+            )
             key = (uid_col[idx], reported[idx])
             if key in warned:
                 continue
@@ -306,7 +446,21 @@ def collect_blast_queries(
 
         # Sequences with no accession AND no Species can't be BLASTed either —
         # surface them so they aren't silently dropped.
-        unqueryable_seqs = set(seq[has_seq & ~has_species])
+        unqueryable = has_seq & ~has_species
+        for idx in unqueryable[unqueryable].index:
+            emit(
+                Issue(
+                    severity="warning",
+                    code="blast_impossible_no_species",
+                    message="Sequence without a resolvable accession and without a "
+                    "Species: BLAST can't identify it.",
+                    group=group,
+                    column=SPECIES,
+                    rows=[idx],
+                    details={"accession": sub.loc[idx, ACCESSION]},
+                )
+            )
+        unqueryable_seqs = set(seq[unqueryable])
         if unqueryable_seqs:
             logger.warning(
                 "  %s: %d sequence(s) have no accession number in the Excel "
@@ -502,6 +656,26 @@ def enrich_with_reference_and_mutations(
             if is_new_pair:
                 mutation_cache[cache_key] = _compute_mutations(seq, seq_ref)
             mut_str, pid_aln, pid_short = mutation_cache[cache_key]
+            if pid_aln is not None and pid_aln < IDENTITY_WARNING_THRESHOLD:
+                emit(
+                    Issue(
+                        severity="warning",
+                        code="low_identity",
+                        message=f"Sequence identity to its reference is "
+                        f"{pid_aln:.2f}%, below the "
+                        f"{IDENTITY_WARNING_THRESHOLD:g}% threshold.",
+                        group=group,
+                        column=SEQUENCE,
+                        rows=[_idx],
+                        value=row[ACCESSION],
+                        details={
+                            "accession": row[ACCESSION],
+                            "receptor_name": row[RECEPTOR_NAME],
+                            "species": row[SPECIES],
+                            "identity": pid_aln,
+                        },
+                    )
+                )
             identities.append(pid_aln)
             identities_short.append(pid_short)
             mutations_list.append(mut_str)

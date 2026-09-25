@@ -1,4 +1,6 @@
 # pipeline/scripts/process_responses.py
+import difflib
+
 import pandas as pd
 
 from scripts.columns import (
@@ -15,6 +17,7 @@ from scripts.columns import (
     VALUE,
     VALUE_NATURE,
 )
+from scripts.report import Issue, ValidationError
 
 _ALLOWED_PARAMETERS = {"primary", "secondary", "dose-response"}
 _ALLOWED_VALUE_NATURES = {"raw", "norm_rec", "norm_pair", "norm_other", "ec50"}
@@ -67,7 +70,38 @@ def _validate_allowed_values(
             f"Column '{col_name}' contains invalid value(s) {bad} "
             f"(allowed: {sorted(allowed)})"
         )
-        raise ValueError(msg)
+        issues: list[Issue] = []
+        for value in bad:
+            closest = difflib.get_close_matches(value, sorted(allowed), n=1, cutoff=0.6)
+            issues.append(
+                Issue(
+                    code="value_not_allowed",
+                    message=f"'{value}' is not an allowed '{col_name}' value.",
+                    group=group,
+                    column=col_name,
+                    rows=invalid.index[invalid == value].tolist(),
+                    value=value,
+                    suggested_value=closest[0] if closest else None,
+                    details={"allowed": sorted(allowed)},
+                )
+            )
+        raise ValidationError(msg, issues)
+
+
+def _row_issues(
+    invalid: pd.Series, code: str, message: str, group: str, col_name: str
+) -> list[Issue]:
+    return [
+        Issue(
+            code=code,
+            message=message,
+            group=group,
+            column=col_name,
+            rows=[idx],
+            value=value,
+        )
+        for idx, value in invalid.items()
+    ]
 
 
 def validate_responsive_column(df: pd.DataFrame) -> None:
@@ -77,10 +111,18 @@ def validate_responsive_column(df: pd.DataFrame) -> None:
     invalid = col[~numeric.isin([0, 1]) | numeric.isna()]
     if not invalid.empty:
         rows = invalid.index.tolist()
-        raise ValueError(
+        msg = (
             f"Column '{RESPONSIVE}' contains invalid value(s) (expected 0 or 1) "
             f"at row(s): {rows}"
         )
+        issues = _row_issues(
+            invalid,
+            "invalid_responsive",
+            f"'{RESPONSIVE}' must be 0 or 1.",
+            RESPONSE,
+            RESPONSIVE,
+        )
+        raise ValidationError(msg, issues)
 
 
 def _validate_float_column(df: pd.DataFrame, col_name: str) -> None:
@@ -102,7 +144,10 @@ def validate_value_column(df: pd.DataFrame) -> None:
     if not invalid.empty:
         rows = invalid.index.tolist()
         msg = f"Column '{VALUE}' contains invalid value(s) at row(s): {rows}"
-        raise ValueError(msg)
+        issues = _row_issues(
+            invalid, "invalid_value", f"Invalid '{VALUE}'.", RESPONSE, VALUE
+        )
+        raise ValidationError(msg, issues)
 
 
 def validate_concentration_column(df: pd.DataFrame) -> None:
@@ -113,7 +158,14 @@ def validate_concentration_column(df: pd.DataFrame) -> None:
     if not invalid.empty:
         rows = invalid.index.tolist()
         msg = f"Column '{CONCENTRATION}' contains invalid value(s) at row(s): {rows}"
-        raise ValueError(msg)
+        issues = _row_issues(
+            invalid,
+            "invalid_value",
+            f"Invalid '{CONCENTRATION}'.",
+            RESPONSE,
+            CONCENTRATION,
+        )
+        raise ValidationError(msg, issues)
 
 
 def validate_parameter_column(df: pd.DataFrame) -> None:

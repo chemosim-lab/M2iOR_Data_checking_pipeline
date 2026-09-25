@@ -23,6 +23,7 @@ M2iOR_Data_checking_pipeline/
     ├── fetch_blast.py                   # Remote BLAST search to identify an unknown sequence
     ├── find_protein_mutations.py        # Sequence alignment and mutation/identity computation
     ├── registry.py                      # Tracks the processing state of each study
+    ├── report.py                        # Structured validation issues and the check report
     ├── export_csv.py                    # Generates the final CSV for the website
     ├── cache_manager.py                 # Generic disk cache for external data
     ├── extract_receptors.py             # Standalone utility to extract the list of unique receptors
@@ -40,6 +41,7 @@ M2iOR_Data_checking_pipeline/
 ### 1. Orchestration and processing tracking
 - **`main.py`** — drives the whole pipeline: command-line options to scan new files, retry failures or force reprocessing, and the per-study processing loop.
 - **`scripts/registry.py`** — records for each study whether it is pending, completed, or failed, and detects files modified since their last successful run.
+- **`scripts/report.py`** — validation steps raise a `ValidationError` carrying structured issues (sheet, Excel row/cell, column, value, suggestion) and report non-blocking findings through `emit()`. The pipeline runs stage by stage (structure, receptors, molecules, responses, assay, source, final checks), so one run reports every problem instead of stopping at the first. `main.py --check` prints the resulting report without exporting anything.
 
 ### 2. Excel ingestion and structural validation
 - **`scripts/columns.py`** — defines the expected schema (Receptor/Co-receptor/Molecule/Response/Source groups...) and their columns.
@@ -47,7 +49,7 @@ M2iOR_Data_checking_pipeline/
 - **`scripts/normalize_dataframe.py`** — cleans values (extra whitespace, casing) and renames legacy columns to their current names.
 
 ### 3. Receptors and co-receptors
-- **`scripts/process_receptors.py`** — collects identifiers (UniProt/GenBank), normalizes receptor names, checks the consistency of the declared species, and flags receptors whose identity with their reference sequence is too low.
+- **`scripts/process_receptors.py`** — collects identifiers (UniProt/GenBank), checks the consistency of the declared species, and flags receptors whose identity with their reference sequence is too low. Receptor names are only ever taken from the Excel file, never from the UniProt/NCBI record: a differently cased `OR5` is reformatted to `Or5`, but an empty name, a name that isn't an `Or<N>`/`Orco` name, or different names sharing an accession typed in the Excel file block the export.
 - **`scripts/fetch_data.py`** — fetches UniProt data, falling back to NCBI data, for each identifier.
 - **`scripts/fetch_blast.py`** — species-targeted BLAST search against NCBI databases to recover an identifier from an unknown sequence.
 - **`scripts/find_protein_mutations.py`** — aligns each sequence against its reference, computing mutations and percent identity.

@@ -1,10 +1,13 @@
 # pipeline/scripts/read_excel.py
 
+import difflib
 from pathlib import Path
 
 import pandas as pd
+from openpyxl.utils import get_column_letter
 
 from scripts.columns import COLUMNS_BY_GROUP, GROUPS_ORDER
+from scripts.report import EXCEL_HEADER_ROWS, Issue, ValidationError
 
 
 def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
@@ -18,19 +21,27 @@ def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
       - Row 1: column names ("Order", "Species", "Gene Name", …)
       - Row 2+: data
 
-    Returns a DataFrame with MultiIndex columns: (group, column_name).
+    Returns a DataFrame with MultiIndex columns: (group, column_name). The
+    data sheet's name is kept in `df.attrs["sheet_name"]`.
 
     Raises:
-        ValueError: if the file does not contain a 2nd sheet, or if groups/columns
-                    do not match the expected structure.
+        ValidationError: if the file does not contain a 2nd sheet, or if
+                         groups/columns do not match the expected structure.
     """
     xl = pd.ExcelFile(excel_path)
 
     if len(xl.sheet_names) < 2:
-        raise ValueError(
+        msg = (
             "Le fichier Excel doit contenir au moins 2 feuilles "
             + f"(feuilles trouvées : {xl.sheet_names}) : {excel_path}"
         )
+        issue = Issue(
+            code="missing_data_sheet",
+            message="The Excel file must contain at least 2 sheets; data is read "
+            "from the 2nd one.",
+            details={"sheets": [str(name) for name in xl.sheet_names]},
+        )
+        raise ValidationError(msg, [issue])
 
     raw_data_sheet_name = xl.sheet_names[1]
 
@@ -66,8 +77,9 @@ def get_raw_data_from_excel_file(excel_path: Path) -> pd.DataFrame:
     multi_columns = pd.MultiIndex.from_arrays([groups, columns])
 
     # Données à partir de la ligne 2
-    df = raw.iloc[2:].reset_index(drop=True)
+    df = raw.iloc[EXCEL_HEADER_ROWS:].reset_index(drop=True)
     df.columns = multi_columns
+    df.attrs["sheet_name"] = str(raw_data_sheet_name)
 
     return df
 
@@ -90,22 +102,75 @@ def _normalize_columns(groups: pd.Series, columns: pd.Series) -> pd.Series:
 def _validate_structure(
     groups: pd.Series, columns: pd.Series, excel_path: Path
 ) -> None:
+    messages: list[str] = []
+    issues: list[Issue] = []
+
     actual_groups_order = list(dict.fromkeys(groups.dropna()))
     if actual_groups_order != GROUPS_ORDER:
-        msg = (
+        messages.append(
             f"{excel_path}: groupes inattendus.\n"
             f"  attendu : {GROUPS_ORDER}\n"
             f"  trouvé  : {actual_groups_order}"
         )
-        raise ValueError(msg)
+        issues.append(
+            Issue(
+                code="unexpected_groups",
+                message="The group labels of header row 1 don't match the "
+                "expected groups and order.",
+                details={"expected": GROUPS_ORDER, "found": actual_groups_order},
+                cells=[],
+            )
+        )
 
     for group, expected_cols in COLUMNS_BY_GROUP:
-        actual_cols = list(columns[groups == group])
+        in_group = groups == group
+        if not in_group.any():
+            continue  # already reported as an unexpected group above
+        actual_cols = list(columns[in_group])
         missing = [c for c in expected_cols if c not in actual_cols]
-        if missing:
-            msg = (
-                f"{excel_path}: missing columns in '{group}'.\n"
-                f"  missing : {missing}\n"
-                f"  found   : {actual_cols}"
-            )
-            raise ValueError(msg)
+        if not missing:
+            continue
+        messages.append(
+            f"{excel_path}: missing columns in '{group}'.\n"
+            f"  missing : {missing}\n"
+            f"  found   : {actual_cols}"
+        )
+        unexpected = {
+            str(col): int(pos)
+            for pos, col in columns[in_group].items()
+            if pd.notna(col) and col not in expected_cols
+        }
+        for col in missing:
+            issues.append(_missing_column_issue(group, col, actual_cols, unexpected))
+
+    if issues:
+        raise ValidationError("\n".join(messages), issues)
+
+
+def _missing_column_issue(
+    group: str, column: str, actual_cols: list[object], unexpected: dict[str, int]
+) -> Issue:
+    """Report a missing header, pointing at the closest unexpected header of
+    the same group as the likely misspelled one (e.g. "Solvant used for
+    dilution" for "Solvent used for dilution")."""
+    closest = difflib.get_close_matches(column, list(unexpected), n=1, cutoff=0.6)
+    header_cell = (
+        f"{get_column_letter(unexpected[closest[0]] + 1)}{EXCEL_HEADER_ROWS}"
+        if closest
+        else None
+    )
+    return Issue(
+        code="missing_column",
+        message=f"Expected column '{column}' is missing from group '{group}' "
+        "(header row 2).",
+        group=group,
+        column=column,
+        value=closest[0] if closest else None,
+        suggested_value=column if closest else None,
+        details={
+            "found": [str(c) for c in actual_cols],
+            "closest_header": closest[0] if closest else None,
+            "closest_header_cell": header_cell,
+        },
+        cells=[header_cell] if header_cell else [],
+    )
