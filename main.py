@@ -407,10 +407,7 @@ if __name__ == "__main__":
     do_retry = cast(bool, args.retry)
     do_all = cast(bool, args.all)
     force_arg = cast(str | None, args.force)
-
-    input_path = Path("/nfs/balthazar/andre/m2ior_input/")
-
-    print("Loading processing registry...")
+    input_path = Path("input/")
     registry = StudyProcessingRegistry.load(REGISTRY_FILE)
     print("Done")
 
