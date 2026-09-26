@@ -25,6 +25,7 @@ warnings.filterwarnings("ignore", category=pd.errors.PerformanceWarning)
 from scripts.columns import (
     ACCESSION,
     ASSAY,
+    CANONICAL_NAME,
     CAS,
     CID,
     CO_RECEPTOR,
@@ -35,6 +36,7 @@ from scripts.columns import (
     IDENTITY,
     IDENTITY_SHORT,
     MOLECULE,
+    MOLECULE_NAME,
     PARAMETER,
     RECEPTOR,
     RECEPTOR_NAME,
@@ -198,6 +200,9 @@ def _reformat(df: DataFrame) -> DataFrame:
     )
     add_empty_column_after(
         df, PROTEIN_GROUPS, after_column=IDENTITY, new_column=IDENTITY_SHORT
+    )
+    add_empty_column_after(
+        df, [MOLECULE], after_column=MOLECULE_NAME, new_column=CANONICAL_NAME
     )
     return df
 

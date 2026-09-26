@@ -7,6 +7,7 @@ import pytest
 
 from scripts.columns import (
     ACCESSION,
+    CANONICAL_NAME,
     CAS,
     CID,
     COLUMNS_BY_GROUP,
@@ -25,7 +26,7 @@ from scripts.columns import (
     UNIPROT_ID,
 )
 from scripts.fetch_data import _BlastCandidate, _select_blast_candidates_non_interactive
-from scripts.process_molecules import validate_cid_or_cas
+from scripts.process_molecules import _fill_canonical_names, validate_cid_or_cas
 from scripts.process_receptors import (
     _review_receptor_names,
     _review_species_by_accession,
@@ -363,6 +364,50 @@ def test_an_accession_given_several_species_is_blocking():
         "Ostrinia furnacalis",
         "Ostrinia nubilalis",
     ]
+
+
+# --- canonical molecule names ------------------------------------------------
+
+
+def test_canonical_name_prefers_cas_then_pubchem_and_keeps_the_excel_name():
+    df = _frame(
+        {
+            (MOLECULE, MOLECULE_NAME): [
+                "cis-3-hexenyl acetate",
+                "Amyl acetate",
+                "Mystery",
+            ],
+            (MOLECULE, CANONICAL_NAME): [None, None, None],
+        }
+    )
+    cid_lists = pd.Series([[5363388], [12348], [999]])
+    name_map = {5363388: "cis-3-Hexenyl Acetate", 12348: "Pentyl acetate"}
+    cas_map = {5363388: "3681-71-8", 12348: "628-63-7"}
+    cas_details = {"3681-71-8": {"name": "<em>cis</em>-3-Hexenyl acetate"}}
+
+    collector = _collect(
+        _fill_canonical_names, df, cid_lists, name_map, cas_map, cas_details
+    )
+
+    assert df[MOLECULE][CANONICAL_NAME].tolist() == [
+        "cis-3-Hexenyl acetate",  # CAS Common Chemistry, formatting tags stripped
+        "Pentyl acetate",  # PubChem record title
+        "Mystery",  # no canonical name: the Excel one
+    ]
+    assert df[MOLECULE][MOLECULE_NAME].tolist() == [
+        "cis-3-hexenyl acetate",
+        "Amyl acetate",
+        "Mystery",
+    ]
+    renamed = {
+        (i.value, i.details["canonical_name"], tuple(i.details["sources"]))
+        for i in collector.issues
+    }
+    assert renamed == {
+        ("cis-3-hexenyl acetate", "cis-3-Hexenyl acetate", ("CAS Common Chemistry",)),
+        ("Amyl acetate", "Pentyl acetate", ("PubChem",)),
+    }
+    assert {i.severity for i in collector.issues} == {"info"}
 
 
 # --- BLAST -------------------------------------------------------------------

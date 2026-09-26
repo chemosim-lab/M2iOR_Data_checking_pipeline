@@ -58,7 +58,7 @@ M2iOR_Data_checking_pipeline/
 - **`scripts/tools/get_common_name.py`** — translates a species name into an NCBI taxonomy identifier, used to target BLAST searches.
 
 ### 4. Molecules
-- **`scripts/process_molecules.py`** — checks each molecule's identifier (PubChem CID or CAS number), enriches it (name, formula, structure), and detects mixtures of compounds.
+- **`scripts/process_molecules.py`** — checks each molecule's identifier (PubChem CID or CAS number), enriches it (CAS, InChIKey, SMILES, structure), and detects mixtures of compounds. The Excel `Molecule Name` is kept as the name used in the study; a `Canonical Name` column is added next to it with the name the website shows for the molecule: its CAS Common Chemistry name when available, else its PubChem record title (every renaming is reported as a `molecule_name_canonical` info issue). The Excel name must be one of the molecule's CAS/PubChem names or synonyms, otherwise the row blocks the export (`molecule_name_mismatch`).
 - **`scripts/molecule_stereo.py`** — stereochemistry classification via RDKit (pure molecule vs. mixture of isomers) and generation of an annotated structure image.
 - **`scripts/tools/backfill_stereo_images.py`** — regenerates these images independently of a full pipeline run.
 - **`scripts/fetch_data.py`** — retrieves PubChem records and resolves a CID from a CAS number.

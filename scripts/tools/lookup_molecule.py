@@ -46,6 +46,7 @@ from scripts.fetch_data import (
 from scripts.molecule_stereo import analyze_stereo
 from scripts.process_molecules import (
     _normalize_name,
+    canonical_name,
     _parse_cid_cache,
     check_cid_cas,
     molecule_name_matches,
@@ -286,10 +287,20 @@ def _summarize(
     status = "error" if any(f["severity"] == "error" for f in findings) else "passes"
     result: dict[str, Any] = {"status": status, "findings": findings, "final_cids": cids}
     if status == "passes" and maps is not None and cids:
-        # What the enrichment step writes into the CSV (_enrich_molecule_columns).
+        # What the export writes into the CSV (_fill_canonical_names,
+        # _enrich_molecule_columns).
+        written_cas = sorted({maps.cas[c] for c in cids if c in maps.cas})
+        cas_details = (
+            fetch_cas_common_chemistry_details(written_cas) if written_cas else {}
+        )
+        canonical = [
+            canonical_name(c, maps.names, maps.cas, cas_details)[0] for c in cids
+        ]
         result["pipeline_writes"] = {
-            "Molecule Name": ", ".join(maps.names[c] for c in cids if c in maps.names)
-            or row.name,
+            "Molecule Name": row.name,
+            "Canonical Name": ", ".join(n for n in canonical if n)
+            if all(canonical)
+            else row.name,
             "CAS": cas_written
             or ", ".join(maps.cas[c] for c in cids if c in maps.cas)
             or None,

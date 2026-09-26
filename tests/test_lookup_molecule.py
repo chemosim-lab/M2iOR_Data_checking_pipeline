@@ -70,7 +70,9 @@ def test_wrong_identifiers_get_a_passing_suggestion(offline):  # noqa: ANN001
 def test_consistent_row_passes_without_suggestion(offline):  # noqa: ANN001
     result = lookup(Row(name="p-Methylcyclohexanol", cids=[11524], cas=["589-91-3"]))
     assert result["pipeline"]["status"] == "passes"
-    assert result["pipeline"]["pipeline_writes"]["Molecule Name"] == "4-Methylcyclohexanol"
+    writes = result["pipeline"]["pipeline_writes"]
+    assert writes["Molecule Name"] == "p-Methylcyclohexanol"
+    assert writes["Canonical Name"] == "4-Methylcyclohexanol"
     assert result["suggestions"] == []
 
 

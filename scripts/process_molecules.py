@@ -1,4 +1,5 @@
 # pipeline/scripts/process_molecules.py
+import html
 import re
 from dataclasses import dataclass
 from pathlib import Path
@@ -8,7 +9,16 @@ import colorlog
 import pandas as pd
 
 from scripts.cache_manager import get_cache
-from scripts.columns import CAS, CID, INCHIKEY, MIXTURE, MOLECULE, MOLECULE_NAME, SMILES
+from scripts.columns import (
+    CANONICAL_NAME,
+    CAS,
+    CID,
+    INCHIKEY,
+    MIXTURE,
+    MOLECULE,
+    MOLECULE_NAME,
+    SMILES,
+)
 from scripts.molecule_stereo import export_stereo_classification
 from scripts.report import Issue, ValidationError, emit
 
@@ -336,13 +346,13 @@ def _enrich_molecule_columns(
     inchikey_map: dict[int, str],
     smiles_map: dict[int, str],
 ) -> None:
-    """Replace Molecule Name, CAS, InChIKey and SMILES from PubChem cache.
+    """Replace CAS, InChIKey and SMILES from PubChem cache. Molecule Name is
+    kept as in the study, see `_fill_canonical_names`.
 
     Multi-CID cells (e.g. '87839 and 12345') produce comma-joined values.
     """
 
     for col, mapping in [
-        (MOLECULE_NAME, name_map),
         (CAS, cas_map),
         (INCHIKEY, inchikey_map),
         (SMILES, smiles_map),
@@ -352,6 +362,73 @@ def _enrich_molecule_columns(
         if mask.any():
             _ensure_object_dtype(df, (MOLECULE, col))
             df.loc[updated.index[mask], (MOLECULE, col)] = updated[mask].to_numpy()
+
+
+def canonical_name(
+    cid: int,
+    name_map: dict[int, str],
+    cas_map: dict[int, str],
+    cas_details_map: dict[str, dict[str, Any]],
+) -> tuple[str | None, str | None]:
+    """(name, source) the website shows for a CID: the CAS Common Chemistry
+    name of its CAS number when cached, without its formatting tags (e.g.
+    "<em>cis</em>-3-Hexenyl acetate"), else its PubChem record title."""
+    cas = cas_map.get(cid)
+    cas_name = (cas_details_map.get(cas) or {}).get("name") if cas else None
+    if cas_name:
+        plain = html.unescape(_HTML_TAG_RE.sub("", cas_name)).strip()
+        return plain, "CAS Common Chemistry"
+    if name := name_map.get(cid):
+        return name, "PubChem"
+    return None, None
+
+
+def _fill_canonical_names(
+    df: pd.DataFrame,
+    cid_lists: pd.Series,
+    name_map: dict[int, str],
+    cas_map: dict[int, str],
+    cas_details_map: dict[str, dict[str, Any]],
+) -> None:
+    """Fill Canonical Name (comma-joined for multi-CID rows), keeping the Excel
+    Molecule Name as the name used in the study. Rows get here only once their
+    Molecule Name passed `validate_molecule_name_column`, i.e. it is one of the
+    CID's (or CAS number's) names or synonyms. Without a canonical name for
+    every CID of the row, the Excel name is used. A canonical name differing
+    from the Excel name is reported (info), so the renaming is visible."""
+    excel_names = df[MOLECULE][MOLECULE_NAME]
+    values: list[str | None] = []
+    for idx, cids in cid_lists.items():
+        found = [
+            canonical_name(cid, name_map, cas_map, cas_details_map) for cid in cids
+        ]
+        raw = excel_names.get(idx)
+        excel = "" if pd.isna(raw) else str(raw).strip()
+        if cids and all(name for name, _ in found):
+            canonical = ", ".join(name for name, _ in found if name)
+        else:
+            canonical = excel or None
+        values.append(canonical)
+        if canonical and excel and canonical != excel:
+            emit(
+                Issue(
+                    severity="info",
+                    code="molecule_name_canonical",
+                    message="The website shows this molecule under its canonical "
+                    "name; the Excel name is kept as the name used in the study.",
+                    group=MOLECULE,
+                    column=MOLECULE_NAME,
+                    rows=[idx],
+                    value=excel,
+                    details={
+                        "canonical_name": canonical,
+                        "sources": sorted({source for _, source in found if source}),
+                        "cids": cids,
+                    },
+                )
+            )
+    _ensure_object_dtype(df, (MOLECULE, CANONICAL_NAME))
+    df.loc[cid_lists.index, (MOLECULE, CANONICAL_NAME)] = values
 
 
 def _enrich_mixture_column(
@@ -880,6 +957,7 @@ def process_molecules(
             [issue for e in failures for issue in e.issues],
         )
 
+    _fill_canonical_names(df, cid_lists, name_map, cas_map, cas_details_map or {})
     _enrich_molecule_columns(df, cid_lists, name_map, cas_map, inchikey_map, smiles_map)
     _export_synonyms_csv(synonym_map, output_dir)
 

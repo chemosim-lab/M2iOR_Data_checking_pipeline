@@ -21,6 +21,10 @@ SEQUENCE = "Sequence"
 SEQUENCE_REF = "Sequence_ref"
 
 MOLECULE_NAME = "Molecule Name"
+# Added by the pipeline after Molecule Name: the name the website shows for the
+# molecule (CAS Common Chemistry name, else PubChem record title), while
+# Molecule Name keeps the name used in the study.
+CANONICAL_NAME = "Canonical Name"
 CID = "CID"
 CAS = "CAS"
 INCHIKEY = "InChIKey"
