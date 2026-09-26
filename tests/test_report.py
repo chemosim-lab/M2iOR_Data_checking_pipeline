@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import openpyxl
@@ -26,7 +27,11 @@ from scripts.columns import (
     UNIPROT_ID,
 )
 from scripts.fetch_data import _BlastCandidate, _select_blast_candidates_non_interactive
-from scripts.process_molecules import _fill_canonical_names, validate_cid_or_cas
+from scripts.process_molecules import (
+    _fill_molecule_names,
+    molecule_name_matches,
+    validate_cid_or_cas,
+)
 from scripts.process_receptors import (
     _review_receptor_names,
     _review_species_by_accession,
@@ -369,45 +374,114 @@ def test_an_accession_given_several_species_is_blocking():
 # --- canonical molecule names ------------------------------------------------
 
 
-def test_canonical_name_prefers_cas_then_pubchem_and_keeps_the_excel_name():
+def _fill(names: list[str], cids: list[int], **maps: Any) -> tuple[pd.DataFrame, IssueCollector]:
     df = _frame(
         {
-            (MOLECULE, MOLECULE_NAME): [
-                "cis-3-hexenyl acetate",
-                "Amyl acetate",
-                "Mystery",
-            ],
-            (MOLECULE, CANONICAL_NAME): [None, None, None],
+            (MOLECULE, MOLECULE_NAME): names,
+            (MOLECULE, CANONICAL_NAME): [None] * len(names),
         }
     )
-    cid_lists = pd.Series([[5363388], [12348], [999]])
-    name_map = {5363388: "cis-3-Hexenyl Acetate", 12348: "Pentyl acetate"}
-    cas_map = {5363388: "3681-71-8", 12348: "628-63-7"}
-    cas_details = {"3681-71-8": {"name": "<em>cis</em>-3-Hexenyl acetate"}}
-
     collector = _collect(
-        _fill_canonical_names, df, cid_lists, name_map, cas_map, cas_details
+        _fill_molecule_names,
+        df,
+        pd.Series([[cid] for cid in cids]),
+        maps.get("name_map", {}),
+        maps.get("synonym_map", {}),
+        maps.get("cas_map", {}),
+        maps.get("cas_details", {}),
     )
+    return df, collector
 
+
+def test_canonical_name_prefers_cas_then_pubchem():
+    df, collector = _fill(
+        ["Amyl acetate", "Methyleugenol", "Mystery"],
+        [12348, 7127, 999],
+        name_map={12348: "Pentyl acetate", 7127: "Methyleugenol"},
+        cas_map={7127: "93-15-2"},
+        cas_details={"93-15-2": {"name": "<em>O</em>-Methyleugenol"}},
+    )
     assert df[MOLECULE][CANONICAL_NAME].tolist() == [
-        "cis-3-Hexenyl acetate",  # CAS Common Chemistry, formatting tags stripped
         "Pentyl acetate",  # PubChem record title
-        "Mystery",  # no canonical name: the Excel one
+        "O-Methyleugenol",  # CAS Common Chemistry, formatting tags stripped
+        "Mystery",  # no canonical name: the study's one
     ]
-    assert df[MOLECULE][MOLECULE_NAME].tolist() == [
-        "cis-3-hexenyl acetate",
-        "Amyl acetate",
-        "Mystery",
-    ]
-    renamed = {
+    canonical = {
         (i.value, i.details["canonical_name"], tuple(i.details["sources"]))
         for i in collector.issues
+        if i.code == "molecule_name_canonical"
     }
-    assert renamed == {
-        ("cis-3-hexenyl acetate", "cis-3-Hexenyl acetate", ("CAS Common Chemistry",)),
+    assert canonical == {
         ("Amyl acetate", "Pentyl acetate", ("PubChem",)),
+        ("Methyleugenol", "O-Methyleugenol", ("CAS Common Chemistry",)),
     }
-    assert {i.severity for i in collector.issues} == {"info"}
+
+
+def test_formatting_only_differences_take_the_registry_spelling():
+    # Dweck et al. 2015: same name as the canonical one, or a genuine synonym.
+    names = ["iso-eugenol", "hexane", "2-hydroxy-anisole", "guaiacol acetate"]
+    df, collector = _fill(
+        names,
+        [853433, 8058, 460, 7136],
+        name_map={
+            853433: "Isoeugenol",
+            8058: "Hexane",
+            460: "Guaiacol",
+            7136: "Guaiacyl acetate",
+        },
+        synonym_map={
+            853433: ["Isoeugenol", "Iso-eugenol"],
+            8058: ["HEXANE", "hexane"],
+            460: ["Guaiacol", "2-HYDROXYANISOLE", "2-Hydroxyanisole", "2-Hydroxy-Anisole"],
+            7136: ["Guaiacyl acetate", "Guaiacol acetate"],
+        },
+    )
+    assert df[MOLECULE][MOLECULE_NAME].tolist() == [
+        "Isoeugenol",
+        "Hexane",
+        "2-Hydroxyanisole",  # a synonym, kept in its first mixed-case spelling
+        "Guaiacol acetate",
+    ]
+    formatted = {
+        (i.value, i.suggested_value)
+        for i in collector.issues
+        if i.code == "molecule_name_format"
+    }
+    assert formatted == {
+        ("iso-eugenol", "Isoeugenol"),
+        ("hexane", "Hexane"),
+        ("2-hydroxy-anisole", "2-Hydroxyanisole"),
+        ("guaiacol acetate", "Guaiacol acetate"),
+    }
+    assert {i.severity for i in collector.issues if i.code == "molecule_name_format"} == {
+        "auto_fix"
+    }
+    canonical = {
+        (i.value, i.details["canonical_name"])
+        for i in collector.issues
+        if i.code == "molecule_name_canonical"
+    }
+    assert canonical == {
+        ("2-Hydroxyanisole", "Guaiacol"),
+        ("Guaiacol acetate", "Guaiacyl acetate"),
+    }
+
+
+def test_notation_choices_are_not_respelled():
+    df, collector = _fill(
+        ["(E)-β-Farnesene"],
+        [5281517],
+        name_map={5281517: "trans-beta-Farnesene"},
+        synonym_map={5281517: ["trans-beta-Farnesene"]},
+    )
+    assert df[MOLECULE][MOLECULE_NAME].tolist() == ["(E)-β-Farnesene"]
+    assert "molecule_name_format" not in {i.code for i in collector.issues}
+
+
+def test_formatting_differences_pass_the_name_check_but_signs_do_not():
+    synonyms = {1: ["2-Methoxy-4-vinylphenol", "(-)-Limonene"]}
+    assert molecule_name_matches("2-methoxy-4-vinyl phenol", [1], [], {}, {}, synonyms)
+    assert not molecule_name_matches("(+)-limonene", [1], [], {}, {}, synonyms)
 
 
 # --- BLAST -------------------------------------------------------------------

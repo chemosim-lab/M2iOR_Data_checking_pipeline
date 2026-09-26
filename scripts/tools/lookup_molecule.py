@@ -47,6 +47,7 @@ from scripts.molecule_stereo import analyze_stereo
 from scripts.process_molecules import (
     _normalize_name,
     canonical_name,
+    registry_spelling,
     _parse_cid_cache,
     check_cid_cas,
     molecule_name_matches,
@@ -287,7 +288,7 @@ def _summarize(
     status = "error" if any(f["severity"] == "error" for f in findings) else "passes"
     result: dict[str, Any] = {"status": status, "findings": findings, "final_cids": cids}
     if status == "passes" and maps is not None and cids:
-        # What the export writes into the CSV (_fill_canonical_names,
+        # What the export writes into the CSV (_fill_molecule_names,
         # _enrich_molecule_columns).
         written_cas = sorted({maps.cas[c] for c in cids if c in maps.cas})
         cas_details = (
@@ -296,8 +297,21 @@ def _summarize(
         canonical = [
             canonical_name(c, maps.names, maps.cas, cas_details)[0] for c in cids
         ]
+        spelled = (
+            registry_spelling(
+                row.name,
+                cids[0],
+                canonical[0],
+                maps.names,
+                maps.synonyms,
+                maps.cas,
+                cas_details,
+            )
+            if row.name and len(cids) == 1
+            else None
+        )
         result["pipeline_writes"] = {
-            "Molecule Name": row.name,
+            "Molecule Name": spelled or row.name,
             "Canonical Name": ", ".join(n for n in canonical if n)
             if all(canonical)
             else row.name,

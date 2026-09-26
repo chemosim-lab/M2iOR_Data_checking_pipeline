@@ -107,6 +107,14 @@ _HTML_TAG_RE = re.compile(r"<[^>]+>")
 # both to the same form lets them compare equal.
 _STEREO_PAREN_RE = re.compile(r"\(([ez])\)-?")
 
+# Signs that carry meaning, set apart before punctuation is dropped from a name.
+_SIGN_TOKENS = [
+    ("(+/-)", " rac "),
+    ("(+-)", " rac "),
+    ("(+)", " plus "),
+    ("(-)", " minus "),
+]
+
 
 def _normalize_name(text: str) -> str:
     """Lowercase a molecule name, strip HTML markup, spell out Greek letters
@@ -123,6 +131,36 @@ def _normalize_name(text: str) -> str:
     replaced = "".join(_NAME_CHAR_REPLACEMENTS.get(ch, ch) for ch in lowered)
     replaced = _STEREO_PAREN_RE.sub(r"\1-", replaced)
     return replaced.replace("trans-", "e-").replace("cis-", "z-")
+
+
+def _loose_key(normalized: str) -> str:
+    """A `_normalize_name` result without spaces and punctuation, so names
+    differing only in formatting ("iso-eugenol" and "Isoeugenol",
+    "2-methoxy-4-vinyl phenol" and "2-Methoxy-4-vinylphenol") compare equal.
+    Optical rotation and racemic signs are kept."""
+    for token, word in _SIGN_TOKENS:
+        normalized = normalized.replace(token, word)
+    return re.sub(r"[^a-z0-9]", "", normalized)
+
+
+def _spelling_key(name: str) -> str:
+    """Like `_loose_key`, but on the name as written: Greek letters and E/Z
+    vs trans/cis are notation choices, not formatting, so they stay distinct
+    ("(E)-β-Farnesene" isn't respelled "trans-beta-Farnesene")."""
+    text = html.unescape(_HTML_TAG_RE.sub("", name)).lower()
+    text = "".join(_DASH_TO_HYPHEN.get(ch, ch) for ch in text).replace("±", "+/-")
+    for token, word in _SIGN_TOKENS:
+        text = text.replace(token, word)
+    return re.sub(r"[\W_]", "", text)
+
+
+def _name_in(part: str, candidates: set[str]) -> bool:
+    """Whether a name is among normalized candidates, formatting aside."""
+    variants = _normalize_name_variants(part)
+    if variants & candidates:
+        return True
+    loose = {_loose_key(c) for c in candidates}
+    return any(_loose_key(v) in loose for v in variants)
 
 
 def _normalize_name_variants(text: str) -> set[str]:
@@ -347,7 +385,7 @@ def _enrich_molecule_columns(
     smiles_map: dict[int, str],
 ) -> None:
     """Replace CAS, InChIKey and SMILES from PubChem cache. Molecule Name is
-    kept as in the study, see `_fill_canonical_names`.
+    set by `_fill_molecule_names`.
 
     Multi-CID cells (e.g. '87839 and 12345') produce comma-joined values.
     """
@@ -383,43 +421,130 @@ def canonical_name(
     return None, None
 
 
-def _fill_canonical_names(
+def registry_spelling(
+    excel_name: str,
+    cid: int,
+    canonical: str | None,
+    name_map: dict[int, str],
+    synonym_map: dict[int, list[str]],
+    cas_map: dict[int, str],
+    cas_details_map: dict[str, dict[str, Any]],
+) -> str | None:
+    """How the registries write the Excel name: among the molecule's canonical
+    name, CAS Common Chemistry name, PubChem record title, PubChem synonyms (in
+    PubChem's order) and CAS synonyms spelled the same apart from case, spaces
+    and punctuation (see `_spelling_key`), the first starting with a capital
+    letter and not all in capitals (PubChem also lists e.g. "HEXANE" and
+    "hexane"). An Excel name differing from it only in case, and at least as
+    well capitalized, is kept. None when no registry name matches: the Excel
+    name is then kept as it is."""
+    cas = cas_map.get(cid)
+    detail = (cas_details_map.get(cas) or {}) if cas else {}
+    candidates = [
+        canonical,
+        detail.get("name"),
+        name_map.get(cid),
+        *synonym_map.get(cid, []),
+        *(detail.get("synonyms") or []),
+    ]
+    key = _spelling_key(excel_name)
+    matching = [
+        html.unescape(_HTML_TAG_RE.sub("", c)).strip()
+        for c in candidates
+        if c and _spelling_key(c) == key
+    ]
+    if not matching:
+        return None
+
+    def rank(name: str) -> tuple[bool, bool]:
+        first = next((ch for ch in name if ch.isalpha()), "")
+        return (name == name.upper(), not first.isupper())
+
+    best = min(matching, key=rank)  # first of the best-ranked, in candidate order
+    if best.lower() == excel_name.lower() and rank(excel_name) <= rank(best):
+        return excel_name
+    return best
+
+
+def _fill_molecule_names(
     df: pd.DataFrame,
     cid_lists: pd.Series,
     name_map: dict[int, str],
+    synonym_map: dict[int, list[str]],
     cas_map: dict[int, str],
     cas_details_map: dict[str, dict[str, Any]],
 ) -> None:
-    """Fill Canonical Name (comma-joined for multi-CID rows), keeping the Excel
-    Molecule Name as the name used in the study. Rows get here only once their
-    Molecule Name passed `validate_molecule_name_column`, i.e. it is one of the
-    CID's (or CAS number's) names or synonyms. Without a canonical name for
-    every CID of the row, the Excel name is used. A canonical name differing
-    from the Excel name is reported (info), so the renaming is visible."""
+    """Fill Canonical Name (comma-joined for multi-CID rows) and write the
+    study's Molecule Name as the registries spell it.
+
+    Rows get here only once their Molecule Name passed
+    `validate_molecule_name_column`: it is one of the CID's (or CAS number's)
+    names or synonyms, formatting aside. A name differing from its registry
+    spelling only in case, spaces or punctuation ("iso-eugenol" ->
+    "Isoeugenol", "guaiacol acetate" -> "Guaiacol acetate") is respelled and
+    reported (auto_fix, to correct in the Excel file); a genuine synonym stays
+    the study's name. Multi-CID rows keep their Excel name. Without a canonical
+    name for every CID of the row, the study's name is used. A canonical name
+    differing from the study's name is reported (info), so the renaming is
+    visible."""
     excel_names = df[MOLECULE][MOLECULE_NAME]
-    values: list[str | None] = []
+    canonical_values: list[str | None] = []
     for idx, cids in cid_lists.items():
         found = [
             canonical_name(cid, name_map, cas_map, cas_details_map) for cid in cids
         ]
         raw = excel_names.get(idx)
         excel = "" if pd.isna(raw) else str(raw).strip()
-        if cids and all(name for name, _ in found):
-            canonical = ", ".join(name for name, _ in found if name)
-        else:
-            canonical = excel or None
-        values.append(canonical)
-        if canonical and excel and canonical != excel:
+        found_canonical = (
+            ", ".join(name for name, _ in found if name)
+            if cids and all(name for name, _ in found)
+            else None
+        )
+
+        study = excel
+        if len(cids) == 1 and excel:
+            spelled = registry_spelling(
+                excel,
+                cids[0],
+                found_canonical,
+                name_map,
+                synonym_map,
+                cas_map,
+                cas_details_map,
+            )
+            if spelled and spelled != excel:
+                emit(
+                    Issue(
+                        severity="auto_fix",
+                        code="molecule_name_format",
+                        message="Molecule Name differs from its registry spelling "
+                        "only in case, spaces or punctuation; the export writes "
+                        "the registry spelling. Correct it in the Excel file.",
+                        group=MOLECULE,
+                        column=MOLECULE_NAME,
+                        rows=[idx],
+                        value=excel,
+                        suggested_value=spelled,
+                        details={"cids": cids},
+                    )
+                )
+                study = spelled
+                _ensure_object_dtype(df, (MOLECULE, MOLECULE_NAME))
+                df.loc[idx, (MOLECULE, MOLECULE_NAME)] = spelled
+
+        canonical = found_canonical or study or None
+        canonical_values.append(canonical)
+        if canonical and study and canonical != study:
             emit(
                 Issue(
                     severity="info",
                     code="molecule_name_canonical",
                     message="The website shows this molecule under its canonical "
-                    "name; the Excel name is kept as the name used in the study.",
+                    "name; the study's name is shown under it.",
                     group=MOLECULE,
                     column=MOLECULE_NAME,
                     rows=[idx],
-                    value=excel,
+                    value=study,
                     details={
                         "canonical_name": canonical,
                         "sources": sorted({source for _, source in found if source}),
@@ -428,7 +553,7 @@ def _fill_canonical_names(
                 )
             )
     _ensure_object_dtype(df, (MOLECULE, CANONICAL_NAME))
-    df.loc[cid_lists.index, (MOLECULE, CANONICAL_NAME)] = values
+    df.loc[cid_lists.index, (MOLECULE, CANONICAL_NAME)] = canonical_values
 
 
 def _enrich_mixture_column(
@@ -800,10 +925,10 @@ def molecule_name_matches(
 
     if len(parts) == len(cids) and len(cids) > 1:
         return not any(
-            candidates and not (_normalize_name_variants(part) & candidates)
+            candidates and not _name_in(part, candidates)
             for part, candidates in zip(parts, per_cid_candidates, strict=True)
         )
-    return all(_normalize_name_variants(part) & pooled for part in parts)
+    return all(_name_in(part, pooled) for part in parts)
 
 
 def validate_molecule_name_column(
@@ -957,7 +1082,9 @@ def process_molecules(
             [issue for e in failures for issue in e.issues],
         )
 
-    _fill_canonical_names(df, cid_lists, name_map, cas_map, cas_details_map or {})
+    _fill_molecule_names(
+        df, cid_lists, name_map, synonym_map, cas_map, cas_details_map or {}
+    )
     _enrich_molecule_columns(df, cid_lists, name_map, cas_map, inchikey_map, smiles_map)
     _export_synonyms_csv(synonym_map, output_dir)
 
