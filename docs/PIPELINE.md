@@ -50,7 +50,7 @@ M2iOR_Data_checking_pipeline/
 - **`scripts/normalize_dataframe.py`** — cleans values (extra whitespace, casing) and renames legacy columns to their current names.
 
 ### 3. Receptors and co-receptors
-- **`scripts/process_receptors.py`** — collects identifiers (UniProt/GenBank), checks the consistency of the declared species, and flags receptors whose identity with their reference sequence is too low. Receptor names are only ever taken from the Excel file, never from the UniProt/NCBI record: a differently cased `OR5` is reformatted to `Or5`, but an empty name, a name that isn't an `Or<N>`/`Orco` name, or different names sharing an accession typed in the Excel file block the export.
+- **`scripts/process_receptors.py`** — collects identifiers (UniProt/GenBank), checks the consistency of the declared species, and flags receptors whose identity with their reference sequence is too low. Receptor names are only ever taken from the Excel file, never from the UniProt/NCBI record: a differently cased `OR5` is reformatted to `Or5`, but an empty name, a name that isn't an `Or<N>`/`Orco` name, different names sharing an accession typed in the Excel file, or an accession given several species (after the UniProt species enrichment) block the export.
 - **`scripts/fetch_data.py`** — fetches UniProt data, falling back to NCBI data, for each identifier.
 - **`scripts/fetch_blast.py`** — species-targeted BLAST search against NCBI databases to recover an identifier from an unknown sequence.
 - **`scripts/find_protein_mutations.py`** — aligns each sequence against its reference, computing mutations and percent identity.

@@ -21,12 +21,14 @@ from scripts.columns import (
     RESPONSE,
     SEQUENCE,
     SOURCE,
+    SPECIES,
     UNIPROT_ID,
 )
 from scripts.fetch_data import _BlastCandidate, _select_blast_candidates_non_interactive
 from scripts.process_molecules import validate_cid_or_cas
 from scripts.process_receptors import (
     _review_receptor_names,
+    _review_species_by_accession,
     process_receptors_name_columns,
     suggest_canonical_receptor_name,
 )
@@ -331,6 +333,36 @@ def test_names_are_never_taken_from_the_reference_record():
     names = df[RECEPTOR][RECEPTOR_NAME]
     assert pd.isna(names[1])
     assert names.drop(1).tolist() == ["Or5", "Or1", "Or2"]
+
+
+def test_an_accession_given_several_species_is_blocking():
+    df = _frame(
+        {
+            (RECEPTOR, ACCESSION): [
+                "ADB89179.1",
+                "ADB89179.1",
+                "P1",
+                "Not available",
+                "Not available",
+            ],
+            (RECEPTOR, SPECIES): [
+                "Ostrinia nubilalis",
+                "Ostrinia furnacalis",
+                "Ostrinia nubilalis",
+                "A",
+                "B",
+            ],
+        }
+    )
+    issues = _review_species_by_accession(df, [RECEPTOR])
+    assert [(i.code, i.value, i.rows) for i in issues] == [
+        ("receptor_accession_species_conflict", "Ostrinia nubilalis", [0]),
+        ("receptor_accession_species_conflict", "Ostrinia furnacalis", [1]),
+    ]
+    assert issues[0].details["species_for_accession"] == [
+        "Ostrinia furnacalis",
+        "Ostrinia nubilalis",
+    ]
 
 
 # --- BLAST -------------------------------------------------------------------

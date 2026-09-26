@@ -173,14 +173,13 @@ def process_receptors_name_columns(
     blocking = _review_receptor_names(df, groups, original_names, excel_accessions)
 
     enrich_species_column(df, groups, all_unique_uniprot_ids)
+    blocking += _review_species_by_accession(df, groups)
 
     if blocking:
         problems = dict.fromkeys(
             f"{issue.group} {issue.code} ({issue.value!r})" for issue in blocking
         )
-        msg = "Receptor Name problem(s) to correct in the Excel file: " + "; ".join(
-            problems
-        )
+        msg = "Receptor problem(s) to correct in the Excel file: " + "; ".join(problems)
         raise ValidationError(msg, blocking)
 
 
@@ -331,6 +330,53 @@ def _review_receptor_names(
                     )
                 )
     return blocking
+
+
+def _review_species_by_accession(df: pd.DataFrame, groups: list[str]) -> list[Issue]:
+    """An accession designates one protein of one species: an accession given
+    several species in the file (final Species values, after the UniProt
+    enrichment) means the accession or the species is wrong on some rows. The
+    website's database keeps one species per accession, so these are blocking.
+    One issue per accession, species and group, listing its rows."""
+    rows: dict[str, dict[str, dict[str, list[int]]]] = {}
+    for group in groups:
+        if SPECIES not in df[group].columns:
+            continue
+        accessions = df[group][ACCESSION]
+        species = df[group][SPECIES]
+        for idx in df.index:
+            if _is_blank(accessions[idx]) or _is_blank(species[idx]):
+                continue
+            accession = str(accessions[idx]).strip()
+            if accession.lower() == NOT_AVAILABLE.lower():
+                continue
+            by_group = rows.setdefault(accession, {}).setdefault(
+                str(species[idx]).strip(), {}
+            )
+            by_group.setdefault(group, []).append(idx)
+
+    issues: list[Issue] = []
+    for accession, by_species in rows.items():
+        if len(by_species) == 1:
+            continue
+        for name, by_group in by_species.items():
+            issues.extend(
+                Issue(
+                    code="receptor_accession_species_conflict",
+                    message="The same accession is given several species in the "
+                    "Excel file; the accession or the species is wrong on some rows.",
+                    group=group,
+                    column=SPECIES,
+                    rows=group_rows,
+                    value=name,
+                    details={
+                        "accession": accession,
+                        "species_for_accession": sorted(by_species),
+                    },
+                )
+                for group, group_rows in by_group.items()
+            )
+    return issues
 
 
 def enrich_species_column(
