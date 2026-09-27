@@ -29,7 +29,11 @@ from scripts.columns import (
 from scripts.fetch_data import _BlastCandidate, _select_blast_candidates_non_interactive
 from scripts.process_molecules import (
     _fill_molecule_names,
+    cas_check_digit_ok,
+    invalid_cas_tokens,
     molecule_name_matches,
+    repair_cas_token,
+    validate_cas_column,
     validate_cid_or_cas,
 )
 from scripts.process_receptors import (
@@ -243,6 +247,65 @@ def test_cid_and_cas_missing_issue_per_row():
     with pytest.raises(ValidationError) as excinfo:
         validate_cid_or_cas(df)
     assert [(i.rows, i.column) for i in excinfo.value.issues] == [([1], CID)]
+
+
+@pytest.mark.parametrize(
+    ("cas", "valid"),
+    [("71-36-3", True), ("24915-95-5", True), ("7732-18-5", True),
+     ("24951-95-5", False), ("18484-69-6", False)],
+)
+def test_cas_check_digit(cas: str, valid: bool):
+    assert cas_check_digit_ok(cas) is valid
+
+
+@pytest.mark.parametrize(
+    ("cell", "invalid"),
+    [
+        ("71-36-3", []),
+        ("71-36-3 and 64-17-5", []),
+        ("143-08-8 ; 28473-21-4", []),
+        ("27960-21-0 & 35205-70-0 MIXTURE", []),
+        ("821-55-6K", [("821-55-6K", "format")]),
+        ("515--4", [("515--4", "format")]),
+        ("204-454-2", [("204-454-2", "format")]),
+        (6430551, [("6430551", "format")]),
+        ("24951-95-5", [("24951-95-5", "check_digit")]),
+        ("71-36-3, 88-15-13", [("88-15-13", "format")]),
+        (None, []),
+    ],
+)
+def test_invalid_cas_tokens(cell: object, invalid: list[tuple[str, str]]):
+    assert invalid_cas_tokens(cell) == invalid
+
+
+@pytest.mark.parametrize(
+    ("token", "repaired"),
+    [("821-55-6K", "821-55-6"), ("120-72-9N", "120-72-9"), ("88-15-13", None),
+     ("24951-95-5", None), ("515--4", None)],
+)
+def test_repair_cas_token(token: str, repaired: str | None):
+    assert repair_cas_token(token) == repaired
+
+
+def test_invalid_cas_blocks_only_rows_without_cid():
+    df = _frame(
+        {
+            (MOLECULE, MOLECULE_NAME): ["Nonanone", "Pentane", "1-Butanol"],
+            (MOLECULE, CID): [None, "1582", None],
+            (MOLECULE, CAS): ["821-55-6K", "515--4", "71-36-3"],
+        }
+    )
+    collector = _collect(validate_cas_column, df)
+    found = sorted(
+        (i.rows, i.severity, i.value, i.suggested_value, i.details["reason"])
+        for i in collector.issues
+    )
+    assert found == [
+        ([0], "error", "821-55-6K", "821-55-6", "format"),
+        ([1], "warning", "515--4", None, "format"),
+    ]
+    assert all(i.code == "cas_invalid" for i in collector.issues)
+    assert collector.has_errors
 
 
 def test_doi_url_prefix_is_reported_as_auto_fix():

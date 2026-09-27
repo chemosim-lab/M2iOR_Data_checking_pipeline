@@ -50,10 +50,12 @@ from scripts.process_molecules import (
     registry_spelling,
     _parse_cid_cache,
     check_cid_cas,
+    invalid_cas_tokens,
     molecule_name_matches,
     normalize_dashes,
     parse_cas_cell,
     parse_cid_cell,
+    repair_cas_token,
 )
 from scripts.read_excel import get_raw_data_from_excel_file
 from scripts.report import (
@@ -68,6 +70,7 @@ _CAS_COMMON_CHEMISTRY_DETAIL_URL = "https://commonchemistry.cas.org/detail?cas_r
 
 # Check report issues this tool can diagnose (see --report).
 MOLECULE_ISSUE_CODES = {
+    "cas_invalid",
     "cid_and_cas_missing",
     "cid_cas_name_conflict",
     "molecule_name_mismatch",
@@ -148,6 +151,22 @@ def pipeline_outcome(row: Row) -> dict[str, Any]:
     cas_list = list(row.cas)
     # validate_cid_or_cas counts any non-empty CAS cell, even unparseable.
     has_cas = bool(row.cas_cell) if row.cas_cell is not None else bool(cas_list)
+
+    # validate_cas_column: blocking only when no CID identifies the molecule.
+    cas_text = row.cas_cell if row.cas_cell is not None else ", ".join(cas_list)
+    for token, reason in invalid_cas_tokens(cas_text or None):
+        findings.append(
+            _finding(
+                "warning" if cids else "error",
+                "cas_invalid",
+                "Not a valid CAS number"
+                + ("; the export writes the CID's own CAS." if cids else ", and the "
+                   "row has no CID: the molecule can't be identified."),
+                invalid=token,
+                reason=reason,
+                repaired=repair_cas_token(token),
+            )
+        )
 
     if not cids and not has_cas:
         if row.mixture == "mixture" and row.name:
@@ -381,7 +400,7 @@ def _suggestion(
     before = {
         "Molecule Name": row.name,
         "CID": ", ".join(str(c) for c in row.cids) or None,
-        "CAS": ", ".join(row.cas) or None,
+        "CAS": row.cas_cell or ", ".join(row.cas) or None,
     }
     return {
         "changes": [
@@ -403,6 +422,18 @@ def _suggestions(
     current = row.cids[0] if len(row.cids) == 1 else None
 
     for finding in pipeline["findings"]:
+        if finding["code"] == "cas_invalid" and finding.get("repaired"):
+            repaired = normalize_dashes(row.cas_cell or "").replace(
+                finding["invalid"], finding["repaired"]
+            )
+            suggestions.append(
+                _suggestion(
+                    row,
+                    {"CAS": repaired},
+                    "The CAS cell holds a valid CAS number among stray characters.",
+                    [_CAS_COMMON_CHEMISTRY_DETAIL_URL.format(cas=finding["repaired"])],
+                )
+            )
         if finding["code"] == "cas_mismatch_cid" and finding.get("pipeline_writes"):
             suggestions.append(
                 _suggestion(
@@ -425,7 +456,12 @@ def _suggestions(
                 )
             )
 
-    if not codes & {"molecule_name_mismatch", "cid_cas_name_conflict", "cid_and_cas_missing"}:
+    if not codes & {
+        "molecule_name_mismatch",
+        "cid_cas_name_conflict",
+        "cid_and_cas_missing",
+        "cas_invalid",
+    }:
         return suggestions
 
     # The Name identifies another compound: take its CID (and PubChem's CAS
@@ -435,7 +471,9 @@ def _suggestions(
         if cid == current:
             continue
         changes: dict[str, Any] = {"CID": cid}
-        if maps.cas.get(cid) and (row.cas or "cid_and_cas_missing" in codes):
+        if maps.cas.get(cid) and (
+            row.cas or codes & {"cid_and_cas_missing", "cas_invalid"}
+        ):
             changes["CAS"] = maps.cas[cid]
         suggestions.append(
             _suggestion(

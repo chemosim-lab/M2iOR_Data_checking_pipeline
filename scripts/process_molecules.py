@@ -25,6 +25,13 @@ from scripts.report import Issue, ValidationError, emit
 logger = colorlog.getLogger(__name__)
 
 _CAS_RE = re.compile(r"^\d{2,7}-\d{2}-\d$")
+# A well-formed CAS number inside a token with stray characters ("821-55-6K").
+_CAS_IN_TOKEN_RE = re.compile(r"(?<![\d-])\d{2,7}-\d{2}-\d(?![\d-])")
+# Separators found between the CAS numbers of one cell, including the ";" and
+# "&" that some studies use (e.g. "143-08-8 ; 28473-21-4").
+_CAS_CELL_SEPARATORS_RE = re.compile(r"\band\b|[,;&+\s]+", re.IGNORECASE)
+# Words that label a CAS cell rather than name a CAS number.
+_CAS_CELL_LABELS = {"mixture"}
 _CID_TOKEN_RE = re.compile(r"^\d+(?:\.\d+)?$")
 
 _PUBCHEM_COMPOUND_URL = "https://pubchem.ncbi.nlm.nih.gov/compound/{cid}"
@@ -221,6 +228,95 @@ def parse_cas_cell(raw: object) -> list[str]:
     normalized = re.sub(r"\band\b", ",", text, flags=re.IGNORECASE).replace("+", ",")
     tokens = [t.strip() for t in normalized.split(",") if t.strip()]
     return [t for t in tokens if _CAS_RE.match(t)]
+
+
+def cas_check_digit_ok(cas: str) -> bool:
+    """Whether a well-formed CAS number's last digit is its check digit: the
+    other digits, weighted 1, 2, 3... from the right, summed modulo 10."""
+    body = cas[:-2].replace("-", "")
+    total = sum(int(d) * weight for weight, d in enumerate(reversed(body), start=1))
+    return total % 10 == int(cas[-1])
+
+
+def invalid_cas_tokens(raw: object) -> list[tuple[str, str]]:
+    """The tokens of a CAS cell that aren't a valid CAS number, each with the
+    reason: "format" (not ##-##-#) or "check_digit".
+
+    Unlike `parse_cas_cell`, which silently drops such tokens, this splits on
+    every separator seen in the studies, so that a list of valid numbers is
+    never reported.
+    """
+    if pd.isna(raw):
+        return []
+    text = normalize_dashes(str(raw).strip())
+    invalid: list[tuple[str, str]] = []
+    for token in _CAS_CELL_SEPARATORS_RE.split(text):
+        if not token or token.lower() in _CAS_CELL_LABELS:
+            continue
+        if not _CAS_RE.match(token):
+            invalid.append((token, "format"))
+        elif not cas_check_digit_ok(token):
+            invalid.append((token, "check_digit"))
+    return invalid
+
+
+def repair_cas_token(token: str) -> str | None:
+    """The valid CAS number a token holds among stray characters ("821-55-6K"
+    -> "821-55-6"), or None. A wrong check digit is never repaired: the typo
+    can be in any digit."""
+    found = _CAS_IN_TOKEN_RE.findall(token)
+    if len(found) == 1 and cas_check_digit_ok(found[0]):
+        return found[0]
+    return None
+
+
+def validate_cas_column(df: pd.DataFrame) -> None:
+    """Report CAS cells holding something that isn't a valid CAS number.
+
+    On a row without a usable CID, the CAS number is what identifies the
+    molecule: an invalid one leaves the CID empty, so it blocks the export
+    (ValidationError). On a row with a CID it is only a warning, since the
+    export replaces the CAS with the CID's own from PubChem.
+    """
+    mol = df[MOLECULE]
+    errors: list[Issue] = []
+    for idx, raw in mol[CAS].items():
+        invalid = invalid_cas_tokens(raw)
+        if not invalid:
+            continue
+        has_cid = bool(parse_cid_cell(mol.loc[idx, CID]))
+        cell = normalize_dashes(str(raw).strip())
+        for token, reason in invalid:
+            repaired = repair_cas_token(token)
+            issue = Issue(
+                code="cas_invalid",
+                severity="warning" if has_cid else "error",
+                message=(
+                    "Not a valid CAS number; the row's CID identifies the molecule "
+                    "and the export writes PubChem's CAS for it."
+                    if has_cid
+                    else "Not a valid CAS number, and the row has no CID: the "
+                    "molecule can't be identified."
+                ),
+                group=MOLECULE,
+                column=CAS,
+                rows=[idx],
+                value=str(raw).strip(),
+                suggested_value=cell.replace(token, repaired) if repaired else None,
+                details={
+                    "invalid": token,
+                    "reason": reason,
+                    "molecule_name": mol.loc[idx, MOLECULE_NAME],
+                },
+            )
+            if has_cid:
+                emit(issue)
+            else:
+                errors.append(issue)
+    if errors:
+        rows = sorted({row for issue in errors for row in issue.rows})
+        msg = f"Invalid CAS number(s) on row(s) without a CID at index(es): {rows}"
+        raise ValidationError(msg, errors)
 
 
 def validate_cid_or_cas(df: pd.DataFrame) -> None:

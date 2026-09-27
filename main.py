@@ -65,6 +65,7 @@ from scripts.process_molecules import (
     get_unique_cids,
     parse_cid_cell,
     process_molecules,
+    validate_cas_column,
     validate_cid_or_cas,
 )
 from scripts.process_receptors import (
@@ -312,6 +313,7 @@ def _process_molecules(
     df: DataFrame, collector: IssueCollector, synonyms_dir: Path, images_dir: Path
 ) -> None:
     collector.check(validate_cid_or_cas, df)
+    collector.check(validate_cas_column, df)
     all_unique_cids: list[int] = get_unique_cids(df)
     failed_cids = fetch_pubchem_data(all_unique_cids)
 

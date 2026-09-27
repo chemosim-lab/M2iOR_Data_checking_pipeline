@@ -94,6 +94,29 @@ def test_cas_pointing_elsewhere_is_what_the_pipeline_rewrites(offline):  # noqa:
     ]
 
 
+def test_invalid_cas_without_cid_gets_the_repaired_number(offline):  # noqa: ANN001
+    result = lookup(Row(name="4-Methylcyclohexanol", cas_cell="589-91-3K"))
+    finding = result["pipeline"]["findings"][0]
+    assert result["pipeline"]["status"] == "error"
+    assert (finding["code"], finding["severity"], finding["repaired"]) == (
+        "cas_invalid",
+        "error",
+        "589-91-3",
+    )
+    best = result["suggestions"][0]
+    assert best["changes"] == [{"column": "CAS", "from": "589-91-3K", "to": "589-91-3"}]
+    assert best["pipeline_after"] == "passes"
+
+
+def test_invalid_cas_with_a_cid_is_only_a_warning(offline):  # noqa: ANN001
+    result = lookup(Row(name="4-Methylcyclohexanol", cids=[11524], cas_cell="589-19-3"))
+    assert result["pipeline"]["status"] == "passes"
+    findings = result["pipeline"]["findings"]
+    assert [(f["code"], f["severity"], f["reason"]) for f in findings] == [
+        ("cas_invalid", "warning", "check_digit")
+    ]
+
+
 @pytest.mark.parametrize(
     ("name", "markers"),
     [
