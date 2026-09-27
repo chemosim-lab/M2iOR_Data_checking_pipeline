@@ -1,7 +1,11 @@
 # Directories to ignore
 cache/
-input/
 output/
+
+# Study Excel files: directories or symlinks to where they are versioned
+# (no trailing slash, which would only match directories)
+input
+input_pending
 
 # Python
 __pycache__/
