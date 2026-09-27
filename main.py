@@ -79,6 +79,7 @@ from scripts.process_receptors import (
 from scripts.process_responses import (
     validate_concentration_column,
     validate_concentration_unit_column,
+    validate_ec50_values,
     validate_experimental_technique_column,
     validate_parameter_column,
     validate_responsive_column,
@@ -452,6 +453,7 @@ def run_pipeline(
             validate_parameter_column,
             validate_value_column,
             validate_value_nature_column,
+            validate_ec50_values,
             validate_unit_column,
             validate_concentration_column,
             validate_concentration_unit_column,

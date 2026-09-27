@@ -64,7 +64,7 @@ M2iOR_Data_checking_pipeline/
 - **`scripts/fetch_data.py`** — retrieves PubChem records and resolves a CID from a CAS number.
 
 ### 5. Experimental responses
-- **`scripts/process_responses.py`** — checks that result columns (response, parameter, value, unit, technique...) contain only allowed values.
+- **`scripts/process_responses.py`** — checks that result columns (response, parameter, value, unit, technique...) contain only allowed values, and that every EC50 value (`Value nature` = `ec50`) is > 0: an EC50 is a concentration, so a value <= 0, usually a log10 (log EC50), blocks the export (`ec50_not_positive`).
 
 ### 6. Bibliographic sources
 - **`scripts/process_sources.py`** — validates DOI format and replaces the reference with its full bibliographic version.

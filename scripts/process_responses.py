@@ -150,6 +150,37 @@ def validate_value_column(df: pd.DataFrame) -> None:
         raise ValidationError(msg, issues)
 
 
+def validate_ec50_values(df: pd.DataFrame) -> None:
+    """Raise ValidationError if an EC50 value isn't positive.
+
+    An EC50 is a concentration: a value <= 0 is usually its log10 (log EC50)
+    or a placeholder, which the website would show as a concentration.
+    """
+    resp = df[RESPONSE]
+    nature = resp[VALUE_NATURE].astype(str).str.strip().str.lower()
+    value: pd.Series = pd.to_numeric(resp[VALUE], errors="coerce")
+    invalid = resp[VALUE][(nature == "ec50") & (value <= 0)]
+    if not invalid.empty:
+        rows = invalid.index.tolist()
+        msg = f"Column '{VALUE}' contains EC50 value(s) <= 0 at row(s): {rows}"
+        issues = [
+            Issue(
+                code="ec50_not_positive",
+                message="An EC50 is a concentration and must be > 0; a negative "
+                "value is usually a log10 (log EC50), which needs converting.",
+                group=RESPONSE,
+                column=VALUE,
+                rows=[idx],
+                value=raw,
+                details={"unit": None if pd.isna(unit) else unit},
+            )
+            for idx, raw, unit in zip(
+                invalid.index, invalid, resp[UNIT][invalid.index], strict=True
+            )
+        ]
+        raise ValidationError(msg, issues)
+
+
 def validate_concentration_column(df: pd.DataFrame) -> None:
     """Raise ValueError if any non-null value in Concentration is not a float or a string."""
     col = df[RESPONSE][CONCENTRATION].dropna()

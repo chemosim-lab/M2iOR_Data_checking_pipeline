@@ -25,6 +25,9 @@ from scripts.columns import (
     SOURCE,
     SPECIES,
     UNIPROT_ID,
+    UNIT,
+    VALUE,
+    VALUE_NATURE,
 )
 from scripts.fetch_data import _BlastCandidate, _select_blast_candidates_non_interactive
 from scripts.process_molecules import (
@@ -42,7 +45,7 @@ from scripts.process_receptors import (
     process_receptors_name_columns,
     suggest_canonical_receptor_name,
 )
-from scripts.process_responses import validate_parameter_column
+from scripts.process_responses import validate_ec50_values, validate_parameter_column
 from scripts.process_sources import normalize_doi_column
 from scripts.read_excel import get_raw_data_from_excel_file
 from scripts.report import (
@@ -306,6 +309,22 @@ def test_invalid_cas_blocks_only_rows_without_cid():
     ]
     assert all(i.code == "cas_invalid" for i in collector.issues)
     assert collector.has_errors
+
+
+def test_ec50_values_must_be_positive():
+    df = _frame(
+        {
+            (RESPONSE, VALUE_NATURE): ["ec50", "EC50", "ec50", "norm_rec", "ec50"],
+            (RESPONSE, VALUE): [-3.1, 0, 1.2e-5, -2, "N.A."],
+            (RESPONSE, UNIT): ["M", "uM", "M", "percent", "M"],
+        }
+    )
+    with pytest.raises(ValidationError) as excinfo:
+        validate_ec50_values(df)
+    assert [(i.code, i.rows, i.value, i.details) for i in excinfo.value.issues] == [
+        ("ec50_not_positive", [0], -3.1, {"unit": "M"}),
+        ("ec50_not_positive", [1], 0, {"unit": "uM"}),
+    ]
 
 
 def test_doi_url_prefix_is_reported_as_auto_fix():
