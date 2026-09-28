@@ -98,6 +98,11 @@ _PLUSMINUS_TO_ASCII = {
     "±": "+-",
 }
 
+# PubChem lists some synonyms with "±" mangled into "( inverted exclamation
+# markA)", e.g. "( inverted exclamation markA)-ipsenol", the only
+# racemic-marked ipsenol synonym of CID 85712.
+_MANGLED_PLUSMINUS_RE = re.compile(r"\(\s*inverted exclamation marka\)")
+
 _NAME_CHAR_REPLACEMENTS = {
     **_GREEK_TO_LATIN,
     **_DASH_TO_HYPHEN,
@@ -133,8 +138,9 @@ def _normalize_name(text: str) -> str:
     -Limonene') that must be stripped for these to compare equal to a plain
     '(R)-(+)-Limonene' from the input table. PubChem's own names/synonyms and
     typographic dashes (e.g. '(−)-β-Elemene' vs '(-)-beta-Elemene') are
-    normalized the same way."""
+    normalized the same way, and so is PubChem's mangled '±'."""
     lowered = _HTML_TAG_RE.sub("", text.strip().lower())
+    lowered = _MANGLED_PLUSMINUS_RE.sub("(+-)", lowered)
     replaced = "".join(_NAME_CHAR_REPLACEMENTS.get(ch, ch) for ch in lowered)
     replaced = _STEREO_PAREN_RE.sub(r"\1-", replaced)
     return replaced.replace("trans-", "e-").replace("cis-", "z-")
@@ -546,10 +552,12 @@ def registry_spelling(
         *(detail.get("synonyms") or []),
     ]
     key = _spelling_key(excel_name)
+    # "?" stands for characters PubChem lost ("(?)-exo-Brevicomin"): such a
+    # synonym is no spelling to copy.
     matching = [
         html.unescape(_HTML_TAG_RE.sub("", c)).strip()
         for c in candidates
-        if c and _spelling_key(c) == key
+        if c and "?" not in c and _spelling_key(c) == key
     ]
     if not matching:
         return None

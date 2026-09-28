@@ -587,6 +587,28 @@ def test_formatting_differences_pass_the_name_check_but_signs_do_not():
     assert not molecule_name_matches("(+)-limonene", [1], [], {}, {}, synonyms)
 
 
+def test_pubchem_mangled_plus_minus_reads_as_racemic():
+    # Yuvaraj 2021: CID 85712's only racemic-marked ipsenol synonym.
+    synonyms = {85712: ["2-Methyl-6-methylene-7-octen-4-ol", "( inverted exclamation markA)-ipsenol"]}
+    assert molecule_name_matches("(±)-Ipsenol", [85712], [], {}, {}, synonyms)
+    assert molecule_name_matches("(+-)-Ipsenol", [85712], [], {}, {}, synonyms)
+    assert not molecule_name_matches("(+)-Ipsenol", [85712], [], {}, {}, synonyms)
+
+
+def test_names_are_not_respelled_into_synonyms_with_lost_characters():
+    # Yuvaraj 2021: "(?)-Exobrevicomin" is PubChem's, with a sign lost.
+    df, collector = _fill(
+        ["exo-Brevicomin"],
+        [181255],
+        name_map={181255: "Brevicomin"},
+        synonym_map={
+            181255: ["Brevicomin", "exo-Brevicomin", "(?)-Exobrevicomin", "(?)-exo-Brevicomin"]
+        },
+    )
+    assert df[MOLECULE][MOLECULE_NAME].tolist() == ["exo-Brevicomin"]
+    assert "molecule_name_format" not in {i.code for i in collector.issues}
+
+
 # --- BLAST -------------------------------------------------------------------
 
 
