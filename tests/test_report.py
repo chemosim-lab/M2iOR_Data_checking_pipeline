@@ -570,6 +570,30 @@ def test_names_are_not_respelled_into_worse_capitalization():
     assert "molecule_name_format" not in {i.code for i in collector.issues}
 
 
+def test_names_spelled_exactly_as_a_registry_does_are_kept():
+    # Yuvaraj 2021: an acronym, a para locant and an endo prefix.
+    df, collector = _fill(
+        ["VUAA1", "p-Cymene", "(+-)-endo-Brevicomin"],
+        [1319135, 7463, 182344],
+        name_map={
+            1319135: "Vuaa1",
+            7463: "P-Cymene",
+            182344: "(1R,5S,7S)-7-ethyl-5-methyl-6,8-dioxabicyclo[3.2.1]octane",
+        },
+        synonym_map={
+            1319135: ["Vuaa1", "VUAA1"],
+            7463: ["P-Cymene", "p-Cymene", "p-cymene"],
+            182344: ["(+-)-Endobrevicomin", "(+-)-endo-Brevicomin"],
+        },
+    )
+    assert df[MOLECULE][MOLECULE_NAME].tolist() == [
+        "VUAA1",
+        "p-Cymene",
+        "(+-)-endo-Brevicomin",
+    ]
+    assert "molecule_name_format" not in {i.code for i in collector.issues}
+
+
 def test_notation_choices_are_not_respelled():
     df, collector = _fill(
         ["(E)-β-Farnesene"],
