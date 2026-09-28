@@ -532,8 +532,10 @@ def registry_spelling(
     and punctuation (see `_spelling_key`), the first starting with a capital
     letter and not all in capitals (PubChem also lists e.g. "HEXANE" and
     "hexane"). An Excel name differing from it only in case, and at least as
-    well capitalized, is kept. None when no registry name matches: the Excel
-    name is then kept as it is."""
+    well capitalized, is kept, and so is an Excel name better capitalized than
+    every registry spelling ("Z11-Octadecenyl acetate" isn't respelled
+    "(z)-11-octadecenyl acetate"). None when no registry name matches: the
+    Excel name is then kept as it is."""
     cas = cas_map.get(cid)
     detail = (cas_details_map.get(cas) or {}) if cas else {}
     candidates = [
@@ -557,6 +559,8 @@ def registry_spelling(
         return (name == name.upper(), not first.isupper())
 
     best = min(matching, key=rank)  # first of the best-ranked, in candidate order
+    if rank(excel_name) < rank(best):
+        return excel_name
     if best.lower() == excel_name.lower() and rank(excel_name) <= rank(best):
         return excel_name
     return best

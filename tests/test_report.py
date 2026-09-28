@@ -549,6 +549,27 @@ def test_formatting_only_differences_take_the_registry_spelling():
     }
 
 
+def test_names_are_not_respelled_into_worse_capitalization():
+    # Pelz 2006: PubChem's only matching synonyms are all lowercase.
+    df, collector = _fill(
+        ["Z11-Octadecenyl acetate", "Ethyl-R-(-)-3-hydroxybutanoate"],
+        [5363286, 440030],
+        name_map={
+            5363286: "cis-Vaccenyl acetate",
+            440030: "ethyl (3R)-3-hydroxybutanoate",
+        },
+        synonym_map={
+            5363286: ["cis-Vaccenyl acetate", "(z)-11-octadecenyl acetate"],
+            440030: ["ethyl (3R)-3-hydroxybutanoate", "ethyl (R)-(-)3-hydroxybutanoate"],
+        },
+    )
+    assert df[MOLECULE][MOLECULE_NAME].tolist() == [
+        "Z11-Octadecenyl acetate",
+        "Ethyl-R-(-)-3-hydroxybutanoate",
+    ]
+    assert "molecule_name_format" not in {i.code for i in collector.issues}
+
+
 def test_notation_choices_are_not_respelled():
     df, collector = _fill(
         ["(E)-β-Farnesene"],
