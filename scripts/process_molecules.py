@@ -541,8 +541,12 @@ def registry_spelling(
     well capitalized, is kept, and so is an Excel name better capitalized than
     every registry spelling ("Z11-Octadecenyl acetate" isn't respelled
     "(z)-11-octadecenyl acetate"), and so is an Excel name with a capital
-    that a registry spells exactly the same ("VUAA1", "p-Cymene"). None when
-    no registry name matches: the Excel name is then kept as it is."""
+    that a registry spells exactly the same ("VUAA1", "p-Cymene"), and so is
+    an Excel name in mixed case, at least as well capitalized, whose exact
+    punctuation the registries only write all in capitals or all in lowercase
+    ("Limonene" for PubChem's "LIMONENE", rather than its first mixed-case
+    match "(.+-.)-Limonene"). None when no registry name matches: the Excel
+    name is then kept as it is."""
     cas = cas_map.get(cid)
     detail = (cas_details_map.get(cas) or {}) if cas else {}
     candidates = [
@@ -573,6 +577,14 @@ def registry_spelling(
     if rank(excel_name) < rank(best):
         return excel_name
     if best.lower() == excel_name.lower() and rank(excel_name) <= rank(best):
+        return excel_name
+    same = [m for m in matching if m.lower() == excel_name.lower()]
+    if (
+        same
+        and all(m in (m.lower(), m.upper()) for m in same)
+        and excel_name not in (excel_name.lower(), excel_name.upper())
+        and rank(excel_name) <= rank(best)
+    ):
         return excel_name
     return best
 

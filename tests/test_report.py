@@ -594,6 +594,52 @@ def test_names_spelled_exactly_as_a_registry_does_are_kept():
     assert "molecule_name_format" not in {i.code for i in collector.issues}
 
 
+def test_mixed_case_names_a_registry_spells_apart_from_case_are_kept():
+    # Andreu 2025: PubChem's first mixed-case matches are malformed.
+    df, collector = _fill(
+        [
+            "Limonene",
+            "Methyl-4-methoxybenzoate",
+            "n-Butyl acetate",
+            "limonene",
+            "S-(-)-limonene",
+        ],
+        [22311, 8499, 31272, 22311, 439250],
+        name_map={
+            22311: "1-Methyl-4-Prop-1-En-2-Ylcyclohexene",
+            8499: "Methyl Anisate",
+            31272: "Butyl Acetate",
+            439250: "(-)-Limonene",
+        },
+        synonym_map={
+            22311: ["LIMONENE", "(.+-.)-Limonene", "(.+/-.)-Limonene"],
+            8499: [
+                "METHYL 4-METHOXYBENZOATE",
+                "Methyl 4methoxybenzoate",
+                "METHYL-4-METHOXYBENZOATE",
+            ],
+            31272: ["N-BUTYL ACETATE", "n-Butylacetate"],
+            439250: ["(S)-(-)-Limonene", "S-(-)-Limonene"],
+        },
+    )
+    assert df[MOLECULE][MOLECULE_NAME].tolist() == [
+        "Limonene",
+        "Methyl-4-methoxybenzoate",
+        "n-Butyl acetate",
+        "(.+-.)-Limonene",  # all lowercase: no case to keep, respelled as before
+        "(S)-(-)-Limonene",  # a registry writes this punctuation in mixed case
+    ]
+    formatted = {
+        (i.value, i.suggested_value)
+        for i in collector.issues
+        if i.code == "molecule_name_format"
+    }
+    assert formatted == {
+        ("limonene", "(.+-.)-Limonene"),
+        ("S-(-)-limonene", "(S)-(-)-Limonene"),
+    }
+
+
 def test_notation_choices_are_not_respelled():
     df, collector = _fill(
         ["(E)-β-Farnesene"],
