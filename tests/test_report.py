@@ -12,6 +12,7 @@ from scripts.columns import (
     CAS,
     CID,
     COLUMNS_BY_GROUP,
+    CONCENTRATION,
     DOI,
     GENE_NAME,
     MIXTURE,
@@ -45,7 +46,13 @@ from scripts.process_receptors import (
     process_receptors_name_columns,
     suggest_canonical_receptor_name,
 )
-from scripts.process_responses import validate_ec50_values, validate_parameter_column
+from scripts.process_responses import (
+    import_readable_number,
+    validate_concentration_column,
+    validate_ec50_values,
+    validate_parameter_column,
+    validate_value_column,
+)
 from scripts.process_sources import normalize_doi_column
 from scripts.read_excel import get_raw_data_from_excel_file
 from scripts.report import (
@@ -325,6 +332,55 @@ def test_ec50_values_must_be_positive():
         ("ec50_not_positive", [0], -3.1, {"unit": "M"}),
         ("ec50_not_positive", [1], 0, {"unit": "uM"}),
     ]
+
+
+@pytest.mark.parametrize(
+    ("cell", "readable"),
+    [
+        (12, True),
+        (0.5, True),
+        ("0", True),
+        (" 1e-05 ", True),
+        (".5", True),
+        ("-3", True),
+        (">200", True),
+        (">= 20", True),
+        ("<50", True),
+        ("=7", True),
+        ("1 - 3", True),
+        ("0.1\u20131", True),
+        ("", True),
+        ("~12", False),
+        ("N.A.", False),
+        ("1,5", False),
+        ("12 nA", False),
+        ("> ~5", False),
+        (float("inf"), False),
+        (True, False),
+    ],
+)
+def test_import_readable_number(cell: object, readable: bool):
+    assert import_readable_number(cell) is readable
+
+
+def test_values_the_import_cannot_read_are_blocking():
+    df = _frame(
+        {
+            (RESPONSE, VALUE): [12, "~12", ">200", None, "N.A.", "~12", "1-3"],
+            (RESPONSE, CONCENTRATION): ["0.001", 1e-5, None, "10^-3", "", "<1", "0.1"],
+        }
+    )
+    with pytest.raises(ValidationError) as excinfo:
+        validate_value_column(df)
+    assert [(i.code, i.value, i.rows) for i in excinfo.value.issues] == [
+        ("invalid_value", "~12", [1, 5]),
+        ("invalid_value", "N.A.", [4]),
+    ]
+    collector = _collect(validate_concentration_column, df)
+    assert [(i.code, i.value, i.rows) for i in collector.issues] == [
+        ("invalid_value", "10^-3", [3]),
+    ]
+    assert collector.has_errors
 
 
 def test_doi_url_prefix_is_reported_as_auto_fix():

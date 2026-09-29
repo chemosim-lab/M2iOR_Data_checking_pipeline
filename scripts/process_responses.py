@@ -1,5 +1,8 @@
 # pipeline/scripts/process_responses.py
 import difflib
+import math
+import numbers
+import re
 
 import pandas as pd
 
@@ -18,6 +21,12 @@ from scripts.columns import (
     VALUE_NATURE,
 )
 from scripts.report import Issue, ValidationError
+
+# Forms of a Value/Concentration cell the website import reads (resolveMinMaxFloat).
+_UNICODE_DASHES = str.maketrans(dict.fromkeys("\u2010\u2011\u2012\u2013\u2014\u2212", "-"))
+_PHP_NUMERIC = re.compile(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eE][+-]?\d+)?")
+_RANGE = re.compile(r"-?\d+(?:\.\d+)?--?\d+(?:\.\d+)?")
+_ACCEPTED_NUMBER_FORMS = "a number, '<X', '<=X', '>X', '>=X', '=X' or a range 'X1-X2'"
 
 _ALLOWED_PARAMETERS = {"primary", "secondary", "dose-response"}
 _ALLOWED_VALUE_NATURES = {"raw", "norm_rec", "norm_pair", "norm_other", "ec50"}
@@ -136,18 +145,57 @@ def _validate_float_column(df: pd.DataFrame, col_name: str) -> None:
         )
 
 
-def validate_value_column(df: pd.DataFrame) -> None:
-    """Raise ValueError if any non-null value in Value is not a float or a string."""
-    col = df[RESPONSE][VALUE].dropna()
-    numeric = pd.to_numeric(col, errors="coerce")
-    invalid = col[numeric.isna() & ~col.astype(str).str.strip().astype(bool)]
-    if not invalid.empty:
-        rows = invalid.index.tolist()
-        msg = f"Column '{VALUE}' contains invalid value(s) at row(s): {rows}"
-        issues = _row_issues(
-            invalid, "invalid_value", f"Invalid '{VALUE}'.", RESPONSE, VALUE
+def import_readable_number(value: object) -> bool:
+    """Whether the website's import can read `value` as a Value/Concentration cell.
+
+    Mirrors CsvImportService::resolveMinMaxFloat() of the website: after removing
+    whitespace and turning Unicode dashes into '-', a cell is empty, a number
+    (PHP is_numeric), '<X', '<=X', '>X', '>=X', '=X' or a range 'X1-X2'. The
+    import skips a row whose cell is anything else ('~12', 'N.A.', '1,5', a date).
+    """
+    if isinstance(value, bool):
+        return False
+    if isinstance(value, numbers.Real):
+        return math.isfinite(value)
+    text = re.sub(r"\s+", "", str(value).translate(_UNICODE_DASHES))
+    if text[:1] in ("<", ">"):
+        bound = text[2:] if text[1:2] == "=" else text[1:]
+        return bound == "" or _PHP_NUMERIC.fullmatch(bound) is not None
+    if text[:1] == "=":
+        text = text[1:]
+    return (
+        text == ""
+        or _RANGE.fullmatch(text) is not None
+        or _PHP_NUMERIC.fullmatch(text) is not None
+    )
+
+
+def _validate_import_readable(df: pd.DataFrame, col_name: str) -> None:
+    col = df[RESPONSE][col_name].dropna()
+    invalid = col[~col.map(import_readable_number).astype(bool)]
+    if invalid.empty:
+        return
+    rows = invalid.index.tolist()
+    msg = f"Column '{col_name}' contains value(s) the import can't read at row(s): {rows}"
+    issues = [
+        Issue(
+            code="invalid_value",
+            message=f"The website import can't read this '{col_name}' and would skip "
+            "the row: write a number, '<X', '>X' or a range 'X1-X2'.",
+            group=RESPONSE,
+            column=col_name,
+            rows=invalid.index[invalid.astype(str) == str(value)].tolist(),
+            value=value,
+            details={"accepted": _ACCEPTED_NUMBER_FORMS},
         )
-        raise ValidationError(msg, issues)
+        for value in dict.fromkeys(invalid.tolist())
+    ]
+    raise ValidationError(msg, issues)
+
+
+def validate_value_column(df: pd.DataFrame) -> None:
+    """Raise ValidationError if a Value can't be read by the website import."""
+    _validate_import_readable(df, VALUE)
 
 
 def validate_ec50_values(df: pd.DataFrame) -> None:
@@ -182,21 +230,8 @@ def validate_ec50_values(df: pd.DataFrame) -> None:
 
 
 def validate_concentration_column(df: pd.DataFrame) -> None:
-    """Raise ValueError if any non-null value in Concentration is not a float or a string."""
-    col = df[RESPONSE][CONCENTRATION].dropna()
-    numeric = pd.to_numeric(col, errors="coerce")
-    invalid = col[numeric.isna() & ~col.astype(str).str.strip().astype(bool)]
-    if not invalid.empty:
-        rows = invalid.index.tolist()
-        msg = f"Column '{CONCENTRATION}' contains invalid value(s) at row(s): {rows}"
-        issues = _row_issues(
-            invalid,
-            "invalid_value",
-            f"Invalid '{CONCENTRATION}'.",
-            RESPONSE,
-            CONCENTRATION,
-        )
-        raise ValidationError(msg, issues)
+    """Raise ValidationError if a Concentration can't be read by the website import."""
+    _validate_import_readable(df, CONCENTRATION)
 
 
 def validate_parameter_column(df: pd.DataFrame) -> None:
