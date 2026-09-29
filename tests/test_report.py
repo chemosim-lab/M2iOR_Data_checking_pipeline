@@ -399,10 +399,30 @@ def test_doi_url_prefix_is_reported_as_auto_fix():
 
 @pytest.mark.parametrize(
     ("name", "expected"),
-    [("BimOR34", "Or34"), ("AgamOrco", "Orco"), ("Or22A", "Or22a"), ("XP_1", None)],
+    [
+        ("BimOR34", "Or34"),
+        ("AgamOrco", "Orco"),
+        ("Or22A", "Or22a"),
+        ("PrapOR49b-like2", "Or49b-like2"),
+        ("XP_1", None),
+    ],
 )
 def test_suggest_canonical_receptor_name(name: str, expected: str | None):
     assert suggest_canonical_receptor_name(name) == expected
+
+
+def test_like_suffix_is_a_valid_receptor_name():
+    blocking, emitted = _review(
+        ["OR49b-like2", "Or19a-LIKE", "Or49b-likeness"],
+        ["XP_1", "XP_2", "XP_3"],
+        ["MA", "MB", "MC"],
+    )
+    assert [(i.rows, i.suggested_value) for i in emitted] == [
+        ([0], "Or49b-like2"),
+        ([1], "Or19a-like"),
+    ]
+    (invalid,) = blocking
+    assert (invalid.rows, invalid.code) == ([2], "receptor_name_invalid")
 
 
 def _review(original: list[object], accessions: list[object], sequences: list[object],

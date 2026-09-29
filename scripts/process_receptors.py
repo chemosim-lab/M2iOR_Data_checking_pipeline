@@ -38,11 +38,17 @@ IDENTITY_WARNING_THRESHOLD = 95.0
 
 # Receptor names only ever come from the Excel file. A loosely formatted
 # "OR5"/"or22A" is tolerated and reformatted; anything else must be
-# corrected in the source.
-_OR_NAME_RE_LOOSE = re.compile(r"^Or(\d+)(-\d+)?([a-zA-Z]?)$", re.IGNORECASE)
+# corrected in the source. The "-like<N>" suffix keeps the names papers take
+# from RefSeq annotations of species without an OR nomenclature (Pieris rapae
+# "OR49b-like2", after the "odorant receptor 49b-like" record).
+_OR_NAME_RE_LOOSE = re.compile(
+    r"^Or(\d+)(-\d+)?([a-zA-Z]?)(-like\d*)?$", re.IGNORECASE
+)
 _ORCO_RE_LOOSE = re.compile(r"^Orco$", re.IGNORECASE)
 # Canonical name buried at the end of a non-canonical one ("BimOR34" -> "Or34").
-_TRAILING_OR_NAME_RE = re.compile(r"or(co|\d+(?:-\d+)?[a-z]?)$", re.IGNORECASE)
+_TRAILING_OR_NAME_RE = re.compile(
+    r"or(co|\d+(?:-\d+)?[a-z]?(?:-like\d*)?)$", re.IGNORECASE
+)
 
 
 def get_unique_accessions(
@@ -75,7 +81,13 @@ def _get_normalized_receptor_name(names: list[str]) -> str | None:
         None,
     )
     if m:
-        return "Or" + m.group(1) + (m.group(2) or "") + m.group(3).lower()
+        return (
+            "Or"
+            + m.group(1)
+            + (m.group(2) or "")
+            + m.group(3).lower()
+            + (m.group(4) or "").lower()
+        )
     if any(_ORCO_RE_LOOSE.match(name) for name in names):
         return "Orco"
     return None
@@ -256,7 +268,7 @@ def _review_receptor_names(
                 blocking.append(
                     Issue(
                         code="receptor_name_invalid",
-                        message="Receptor Name isn't an Or<N>[a-z]/Orco name; "
+                        message="Receptor Name isn't an Or<N>[a-z][-like<N>]/Orco name; "
                         "correct it in the Excel file.",
                         group=group,
                         column=RECEPTOR_NAME,
@@ -320,7 +332,7 @@ def _review_receptor_names(
                     Issue(
                         severity="auto_fix",
                         code="receptor_name_format",
-                        message="Receptor Name isn't in the canonical Or<N>[a-z]/Orco "
+                        message="Receptor Name isn't in the canonical Or<N>[a-z][-like<N>]/Orco "
                         "format; the pipeline reformats the Excel value.",
                         group=group,
                         column=RECEPTOR_NAME,
