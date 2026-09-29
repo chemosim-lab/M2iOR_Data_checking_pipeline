@@ -60,6 +60,7 @@ from scripts.fetch_data import (
     fetch_uniprot_data,
 )
 from scripts.normalize_dataframe import normalize_df, rename_column
+from scripts.process_assay import normalize_assay_field_format
 from scripts.process_molecules import (
     get_unique_cas_for_cross_check,
     get_unique_cids,
@@ -461,6 +462,7 @@ def run_pipeline(
             collector.check(validate, df)
 
     with collector.stage("assay"):
+        normalize_assay_field_format(df)
         for validate in (
             validate_stimulation_flux_unit_column,
             validate_stimulation_duration_unit_column,

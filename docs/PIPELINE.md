@@ -9,6 +9,7 @@ M2iOR_Data_checking_pipeline/
 ├── main.py                              # Entry point: CLI and pipeline orchestration
 ├── registry.json                        # Persistent processing state for each study
 ├── excel_template.json                  # Reference schema for the expected Excel model
+├── assay_registry.json                  # Canonical spellings for the Assay free-text columns
 │
 └── scripts/                              # Core business logic of the pipeline
     ├── columns.py                       # Expected column/group vocabulary for the Excel file
@@ -18,6 +19,7 @@ M2iOR_Data_checking_pipeline/
     ├── process_molecules.py             # Validation and enrichment of tested molecules
     ├── molecule_stereo.py               # Stereochemistry classification and image generation
     ├── process_responses.py             # Validation of experimental result columns
+    ├── process_assay.py                 # Casing/spacing normalization of Assay free-text columns
     ├── process_sources.py               # Validation and enrichment of bibliographic references
     ├── fetch_data.py                    # Calls to external APIs (UniProt, NCBI, PubChem, doi.org)
     ├── fetch_blast.py                   # Remote BLAST search to identify an unknown sequence
@@ -32,6 +34,7 @@ M2iOR_Data_checking_pipeline/
         ├── split_by_doi.py              # Splits a multi-study Excel file into one file per study
         ├── backfill_stereo_images.py    # Regenerates structure images without rerunning the full pipeline
         ├── lookup_molecule.py           # Diagnoses a molecule row's Name/CID/CAS and suggests corrections
+        ├── build_assay_registry.py      # (Re)builds assay_registry.json from the curated corpus
         └── get_common_name.py           # Translates a species name into an NCBI taxonomy identifier
 ```
 
@@ -65,6 +68,7 @@ M2iOR_Data_checking_pipeline/
 
 ### 5. Experimental responses
 - **`scripts/process_responses.py`** — checks that result columns (response, parameter, value, unit, technique...) contain only allowed values, and that every EC50 value (`Value nature` = `ec50`) is > 0: an EC50 is a concentration, so a value <= 0, usually a log10 (log EC50), blocks the export (`ec50_not_positive`). `Value` and `Concentration` must be cells the website import can read (a number, `<X`, `<=X`, `>X`, `>=X`, `=X` or a range `X1-X2`): anything else, such as `~12`, `N.A.` or `1,5`, would make the import skip the row, so it blocks the export (`invalid_value`).
+- **`scripts/process_assay.py`** — respells the Assay group's free-text columns (Recording System, Type, Expression system, Expression cell type / line, Expression driver, Odor delivery system) to `assay_registry.json`'s canonical spelling when a cell differs from it only in case or spacing (`assay_field_format`, auto_fix). These are open vocabularies (equipment and genetic constructs vary legitimately per study), so a cell with no registry match is left untouched rather than blocked. `scripts/tools/build_assay_registry.py` (re)builds the registry from the currently curated studies.
 
 ### 6. Bibliographic sources
 - **`scripts/process_sources.py`** — validates DOI format and replaces the reference with its full bibliographic version.
@@ -80,4 +84,5 @@ M2iOR_Data_checking_pipeline/
 ### 9. Ancillary tools (one-off usage, outside the main flow)
 - **`scripts/tools/split_by_doi.py`** — splits a multi-study Excel file into one file per study, ahead of the pipeline.
 - **`scripts/tools/lookup_molecule.py`** — looks up a molecule by name, CID, CAS, SMILES or InChIKey and diagnoses an Excel row's Name/CID/CAS consistency with the pipeline's own sources, cache and rules (`check_cid_cas` and `molecule_name_matches` in `scripts/process_molecules.py`); candidate corrections are re-checked with those rules. Read-only.
+- **`scripts/tools/build_assay_registry.py`** — (re)builds `assay_registry.json` by scanning every curated study's Assay columns; run again after a legitimately new equipment/construct name is added to a curated study.
 - **`scripts/extract_receptors.py`** — extracts the list of unique receptors (standalone utility).

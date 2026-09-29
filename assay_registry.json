@@ -1,0 +1,71 @@
+{
+  "Expression cell type / line": {
+    "ab2a": "ab2a",
+    "ab3a": "ab3A",
+    "at1a": "at1a",
+    "hek293": "HEK293",
+    "trex/hek293": "TREx/HEK293",
+    "uas-ors flies": "UAS-Ors flies",
+    "wild-type osn": "wild-type OSN",
+    "xenopus oocyte": "Xenopus oocyte"
+  },
+  "Expression driver": {
+    "agaatgcggccgccaccatgggcaagcctatccctaatcctctgctgggcctggacagcaccgcgagtgacgagtttata": "AGAATGCGGCCGCCACCATGGGCAAGCCTATCCCTAATCCTCTGCTGGGCCTGGACAGCACCGCGAGTGACGAGTTTATA",
+    "endogenous promoter": "endogenous promoter",
+    "kozak consensus": "Kozak consensus",
+    "kozak driver": "Kozak driver",
+    "or22a-gal4": "Or22a-Gal4",
+    "or67d^gal4": "Or67d^Gal4",
+    "orco-gal4": "Orco-Gal4",
+    "pcdna4/to": "pcDNA4/TO",
+    "pcdna5/to": "pcDNA5/TO",
+    "pgemhe": "pGEMHE",
+    "por67d-gal4": "pOR67d-GAL4",
+    "psp64dv": "pSP64DV",
+    "pt7t": "pT7T",
+    "pt7ts": "pT7Ts",
+    "puas": "pUAS",
+    "sp6": "SP6",
+    "w;δhalo/δhalo;or22a-gal4/uas-or": "w;Δhalo/Δhalo;Or22a-GAL4/UAS-Or"
+  },
+  "Expression system": {
+    "drosophila": "Drosophila",
+    "hek": "HEK",
+    "human": "Human",
+    "xenopus": "Xenopus",
+    "xenopus oocytes": "Xenopus oocytes"
+  },
+  "Odor delivery system": {
+    "airbone headspace": "airbone headspace",
+    "airborne headspace": "airborne headspace",
+    "airborne no paper": "airborne no paper",
+    "airborne paper": "airborne paper",
+    "airstream": "airstream",
+    "gas chromatography": "gas chromatography",
+    "head space": "head space",
+    "liquid": "liquid",
+    "passive diffusion": "passive diffusion"
+  },
+  "Recording System": {
+    "andor ixon emccd": "Andor iXon EMCCD",
+    "clariostar omega plate reader (bmg labtech)": "CLARIOstar Omega plate reader (BMG Labtech)",
+    "fluostar omega plate reader": "FLUOstar Omega plate reader",
+    "glass electrode": "glass electrode",
+    "manual": "Manual",
+    "manual two-electrode voltage clamp": "manual two-electrode voltage clamp",
+    "oc-725c": "OC-725C",
+    "olympus bx50wi": "Olympus BX50WI",
+    "olympus bx51wi": "Olympus BX51WI",
+    "omega fluostar": "Omega FluoStar",
+    "solvent used for dilution": "solvent used for dilution",
+    "tec-03bf": "TEC-03BF",
+    "tungsten electrode": "tungsten electrode",
+    "tungsten electrode ssr": "tungsten electrode SSR"
+  },
+  "Type": {
+    "calcium imaging": "calcium imaging",
+    "current amplitude": "current amplitude",
+    "spiking frequency": "spiking frequency",
+    "∆ fluorescence": "∆ fluorescence"
+  }
+}
