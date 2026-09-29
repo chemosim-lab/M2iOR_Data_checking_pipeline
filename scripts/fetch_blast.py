@@ -28,6 +28,23 @@ def _blast_key(sequence: str, species: str) -> str:
     return f"{species.strip().lower()}|{sequence.strip()}"
 
 
+def accession_from_seq_id(seq_id: str) -> str:
+    """
+    The accession in a BLAST hit's NCBI sequence identifier.
+
+    BLAST names hits by FASTA-style identifiers ("ref|XP_081832551.1|",
+    "gb|QOI12088.1|", "gi|123|ref|XP_1.1|"): the accession is the field after
+    the database tag. A bare accession is returned unchanged. Earlier cache
+    entries hold the raw identifier, so cached accessions go through this too.
+    """
+    fields = seq_id.strip().split("|")
+    if fields[0] == "gi" and len(fields) >= 4 and fields[3]:
+        return fields[3]
+    if len(fields) >= 2 and fields[1]:
+        return fields[1]
+    return seq_id.strip()
+
+
 def _load_blast_cache() -> dict[str, dict[str, Any]]:
     if _BLAST_CACHE_FILE.exists():
         with _BLAST_CACHE_FILE.open(encoding="utf-8") as f:
@@ -102,7 +119,7 @@ def _run_blast_query(
         print(f"    [BLAST] No hit found for species={species!r}")  # noqa: T201
         return None, xml_path, "no hit found"
 
-    accession = blast_record[0].target.id
+    accession = accession_from_seq_id(blast_record[0].target.id)
     print(f"    [BLAST] Best hit: {accession}")  # noqa: T201
     return accession, xml_path, None
 
@@ -172,7 +189,7 @@ def fetch_blast_reference(sequence: str, species: str) -> tuple[str, str] | None
     if entry is not None:
         acc = entry.get("accession")
         seq_ref = entry.get("sequence_ref")
-        return (acc, seq_ref) if (acc and seq_ref) else None
+        return (accession_from_seq_id(acc), seq_ref) if (acc and seq_ref) else None
 
     accession, xml_path, error = _run_blast_query(sequence, species)
 
