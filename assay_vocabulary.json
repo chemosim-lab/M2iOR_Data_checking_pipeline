@@ -1,6 +1,6 @@
 {
   "Recording System": {
-    "definition": "Device that records the response, as named in the article: the recording electrode (single sensillum recording), the amplifier or clamp (two-electrode voltage clamp), or the plate reader or microscope + camera (fluorescence). Never a technique, a mode such as 'manual', or a value that belongs to another column.",
+    "definition": "Device that records the response, as named in the article: the recording electrode (single sensillum recording), the amplifier or clamp (two-electrode voltage clamp), or the plate reader, microscope or camera (fluorescence), one device per cell. Never a technique, a mode such as 'manual', or a value that belongs to another column.",
     "allowed": {
       "tungsten electrode": {
         "note": "Electrolytically sharpened tungsten recording electrode.",
@@ -30,8 +30,8 @@
         "note": "BMG LABTECH FLUOstar Omega plate reader.",
         "requires": {"Experimental technique": ["calcium imaging"]}
       },
-      "CLARIOstar Omega plate reader (BMG Labtech)": {
-        "note": "Spelling of the article (Roberts et al. 2022).",
+      "CLARIOstar Omega plate reader": {
+        "note": "BMG LABTECH CLARIOstar Omega plate reader.",
         "requires": {"Experimental technique": ["calcium imaging"]}
       },
       "Olympus BX50WI": {
@@ -72,30 +72,35 @@
     "allowed": {
       "ab3A": {"note": "Empty neuron of the ab3 sensillum.", "requires": {"Expression system": ["Drosophila"]}},
       "at1": {"note": "Neuron of the at1 (T1) trichoid sensillum.", "requires": {"Expression system": ["Drosophila"]}},
-      "ab2": {"note": "ab2 sensillum; the article gives no neuron letter.", "requires": {"Expression system": ["Drosophila"]}},
-      "HEK293": {"requires": {"Expression system": ["HEK"]}}
+      "ab2A": {"note": "A neuron of the ab2 sensillum (Orco-GAL4 expression).", "requires": {"Expression system": ["Drosophila"]}},
+      "larval ORN": {"note": "Native larval olfactory receptor neuron (larvae have no sensilla names).", "requires": {"Expression system": ["Drosophila"]}},
+      "HEK293": {"note": "Including the tetracycline-inducible TREx line: induction is carried by the pcDNA4/TO or pcDNA5/TO driver.", "requires": {"Expression system": ["HEK"]}}
     },
     "pending": {
-      "TREx/HEK293": "Spelling of the T-REx HEK293 line to confirm in the article.",
+      "TREx/HEK293": "Write HEK293: the inducible TREx system is carried by the pcDNA4/TO or pcDNA5/TO driver.",
       "Xenopus oocyte": "Same as the Expression system: leave the cell empty, as the other oocyte studies do.",
-      "wild-type OSN": "Replace by the neuron class the article identifies."
+      "wild-type OSN": "A genotype, not a cell type: replace by the neuron class the article identifies (e.g. larval ORN)."
     }
   },
   "Expression driver": {
     "definition": "Genetic element that drives expression of the receptor: the GAL4 line for Drosophila, the expression vector for Xenopus oocytes and HEK cells. Never a Kozak motif, a primer sequence, a genotype or the vector of a UAS responder.",
     "allowed": {
       "Or22a-Gal4": {"requires": {"Expression system": ["Drosophila"]}},
+      "Or22ab-Gal4": {"note": "Gal4 knock-in replacing both Or22a and Or22b (Or22abGAL4).", "requires": {"Expression system": ["Drosophila"]}},
       "Or67d-Gal4": {"note": "Or67d-GAL4 knock-in line (Dickson).", "requires": {"Expression system": ["Drosophila"]}},
       "Orco-Gal4": {"requires": {"Expression system": ["Drosophila"]}},
       "endogenous promoter": {"note": "Native receptor, no heterologous expression.", "requires": {"Expression system": ["Drosophila"]}},
       "pGEMHE": {"requires": {"Expression system": ["Xenopus oocytes"]}},
       "pT7Ts": {"requires": {"Expression system": ["Xenopus oocytes"]}},
+      "pSP64T-Oligo": {"requires": {"Expression system": ["Xenopus oocytes"]}},
+      "pSP64DV": {"note": "Gateway destination vector converted from pSP64T-Oligo (Lu et al. 2007).", "requires": {"Expression system": ["Xenopus oocytes"]}},
+      "pSP64tRFA": {"note": "Gateway destination vector (spelled 'pSP64t RFA' or 'pSP64tRFA' in the articles).", "requires": {"Expression system": ["Xenopus oocytes"]}},
+      "pCS2+": {"requires": {"Expression system": ["Xenopus oocytes"]}},
       "pcDNA4/TO": {"note": "Vector of Orco.", "requires": {"Expression system": ["HEK"]}},
       "pcDNA5/TO": {"requires": {"Expression system": ["HEK"]}}
     },
     "pending": {
       "pUAS": "Vector of the UAS responder, not a driver: replace by the GAL4 line of the article.",
-      "pSP64DV": "Vector name not found in the article.",
       "SP6": "RNA polymerase promoter, not a vector."
     }
   },
@@ -114,12 +119,13 @@
       "airborne paper": {"note": "Odorant on filter paper in a cartridge (Pasteur pipette or syringe), air pulse redirected into a continuous airstream.", "requires": {"Expression system": ["Drosophila"]}},
       "airborne headspace": {"note": "Headspace of a vial or flask, sampled and injected into the airstream.", "requires": {"Expression system": ["Drosophila"]}},
       "airborne no paper": {"note": "Compound applied directly in the cartridge, without filter paper, heated.", "requires": {"Expression system": ["Drosophila"]}},
+      "direct contact": {"note": "Odorant in a capillary tip brought into contact with the sensillum.", "requires": {"Expression system": ["Drosophila"]}},
+      "gas chromatography": {"note": "GC-separated volatiles introduced into the airstream (GC-SSR).", "requires": {"Expression system": ["Drosophila"]}},
       "liquid": {"note": "Bath perfusion or microfluidic flow."}
     },
     "pending": {
       "airstream": "The airstream is the carrier, not a delivery mode.",
-      "gas chromatography": "Pipette pulses are not gas chromatography: replace by the delivery mode of the article.",
-      "passive diffusion": "Capillary tip approached and put in contact with the sensillum: needs its own value."
+      "passive diffusion": "Capillary tip put in contact with the sensillum: write direct contact."
     }
   }
 }
