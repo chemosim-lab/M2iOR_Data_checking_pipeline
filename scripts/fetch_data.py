@@ -47,7 +47,11 @@ _PUBCHEM_INCHIKEY_CID_URL = (
 # POST endpoints: the identifier goes in the body, so any character in a
 # name or SMILES (e.g. "/") is safe.
 _PUBCHEM_CIDS_BY_URL = "https://pubchem.ncbi.nlm.nih.gov/rest/pug/compound/{kind}/cids/JSON"
-_CAS_COMMON_CHEMISTRY_URL = "https://commonchemistry.cas.org/api/detail"
+_CAS_COMMON_CHEMISTRY_URL = "https://commonchemistry.cas.org/direct-api/detail"
+# The gateway that accepts the API key (the one behind the portal's "API
+# overview" page) rejects requests that do not carry the portal's origin; the
+# older /api/* endpoints answer 401/403 for current keys.
+_CAS_COMMON_CHEMISTRY_ORIGIN = "https://commonchemistry.cas.org/api-overview"
 _CAS_COMMON_CHEMISTRY_SANITY_CAS = "50-00-0"  # formaldehyde
 _APA_URL = "https://doi.org/{doi}"
 _APA_HEADERS = {"Accept": "text/x-bibliography; style=apa; locale=en-US"}
@@ -592,6 +596,10 @@ _CAS_CACHE_SUBDIR = "cas_to_cid"
 _CAS_COMMON_CHEMISTRY_CACHE_SUBDIR = "cas_common_chemistry"
 
 
+def _cas_common_chemistry_headers(api_key: str) -> dict[str, str]:
+    return {"X-API-KEY": api_key, "x-origin": _CAS_COMMON_CHEMISTRY_ORIGIN}
+
+
 def _cas_common_chemistry_key_is_valid(api_key: str) -> bool:
     """One cheap lookup to tell an invalid/rejected API key apart from a CAS
     number that's simply not in CAS Common Chemistry's ~500k-substance set -
@@ -600,7 +608,7 @@ def _cas_common_chemistry_key_is_valid(api_key: str) -> bool:
         response = requests.get(
             _CAS_COMMON_CHEMISTRY_URL,
             params={"cas_rn": _CAS_COMMON_CHEMISTRY_SANITY_CAS},
-            headers={"X-API-KEY": api_key},
+            headers=_cas_common_chemistry_headers(api_key),
             timeout=10,
         )
     except requests.RequestException:
@@ -624,7 +632,7 @@ def fetch_cas_common_chemistry_details(
 ) -> dict[str, dict[str, Any]]:
     """Fetch (or read from cache) each CAS number's own record directly from
     CAS Common Chemistry - the registry that assigns CAS numbers - via
-    https://commonchemistry.cas.org/api/detail?cas_rn={cas}.
+    https://commonchemistry.cas.org/direct-api/detail?cas_rn={cas}.
 
     This is the priority source for anything CAS-related: a direct,
     unambiguous lookup by registry number, rather than indirectly resolving
@@ -674,7 +682,7 @@ def fetch_cas_common_chemistry_details(
         len(to_fetch),
         len(unique_cas) - len(to_fetch),
     )
-    headers = {"X-API-KEY": api_key}
+    headers = _cas_common_chemistry_headers(api_key)
     for i, cas in enumerate(to_fetch, start=1):
         try:
             response = requests.get(
