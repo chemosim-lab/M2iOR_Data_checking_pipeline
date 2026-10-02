@@ -82,6 +82,7 @@ _VALUE_ALIASES: dict[str, str] = {
     "%": "percent",
     "%d fluorescence": "%δ fluorescence",
     "%delta fluorescence": "%δ fluorescence",
+    "second": "s",
 }
 
 # Columns eligible for alias substitution, applied after lowercasing.
@@ -89,6 +90,7 @@ _ALIAS_COLUMNS: list[tuple[str, str]] = [
     (RESPONSE, UNIT),
     (RESPONSE, CONCENTRATION_UNIT),
     (ASSAY, STIMULATION_FLUX_UNIT),
+    (ASSAY, MAIN_FLUX_UNIT),
     (ASSAY, STIMULATION_DURATION_UNIT),
 ]
 

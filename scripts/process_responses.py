@@ -11,6 +11,7 @@ from scripts.columns import (
     CONCENTRATION,
     CONCENTRATION_UNIT,
     EXPERIMENTAL_TECHNIQUE,
+    MAIN_FLUX_UNIT,
     PARAMETER,
     RESPONSE,
     RESPONSIVE,
@@ -56,7 +57,8 @@ _ALLOWED_CONCENTRATION_UNITS = {
     "nm",
 }
 _ALLOWED_STIMULATION_FLUX_UNITS = {"ml/s", "l/min", "ml/min"}
-_ALLOWED_STIMULATION_DURATION_UNITS = {"ms", "s", "second"}
+_ALLOWED_MAIN_FLUX_UNITS = _ALLOWED_STIMULATION_FLUX_UNITS
+_ALLOWED_STIMULATION_DURATION_UNITS = {"ms", "s"}
 _ALLOWED_EXPERIMENTAL_TECHNIQUES = {
     "two-electrode voltage clamp",
     "calcium imaging",
@@ -64,7 +66,6 @@ _ALLOWED_EXPERIMENTAL_TECHNIQUES = {
     "fluorescence",
     "door 2.0",
     "electroantennography",
-    "hek293",
 }
 
 
@@ -256,6 +257,10 @@ def validate_stimulation_flux_unit_column(df: pd.DataFrame) -> None:
     _validate_allowed_values(
         df, ASSAY, STIMULATION_FLUX_UNIT, _ALLOWED_STIMULATION_FLUX_UNITS
     )
+
+
+def validate_main_flux_unit_column(df: pd.DataFrame) -> None:
+    _validate_allowed_values(df, ASSAY, MAIN_FLUX_UNIT, _ALLOWED_MAIN_FLUX_UNITS)
 
 
 def validate_stimulation_duration_unit_column(df: pd.DataFrame) -> None:

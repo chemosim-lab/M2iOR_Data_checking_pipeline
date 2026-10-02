@@ -1,0 +1,126 @@
+{
+  "Recording System": {
+    "definition": "Device that records the response, as named in the article: the recording electrode (single sensillum recording), the amplifier or clamp (two-electrode voltage clamp), or the plate reader or microscope + camera (fluorescence). Never a technique, a mode such as 'manual', or a value that belongs to another column.",
+    "allowed": {
+      "tungsten electrode": {
+        "note": "Electrolytically sharpened tungsten recording electrode.",
+        "requires": {"Experimental technique": ["single sensillum recording"]}
+      },
+      "glass electrode": {
+        "note": "Glass capillary filled with sensillum lymph ringer, on an AgCl wire.",
+        "requires": {"Experimental technique": ["single sensillum recording"]}
+      },
+      "OC-725C": {
+        "note": "Warner Instruments oocyte clamp, model C.",
+        "requires": {"Experimental technique": ["two-electrode voltage clamp"]}
+      },
+      "OC-725D": {
+        "note": "Warner Instruments oocyte clamp, model D (RC3Z/OC-725D).",
+        "requires": {"Experimental technique": ["two-electrode voltage clamp"]}
+      },
+      "TEC-03BF": {
+        "note": "npi electronic two-electrode voltage clamp amplifier.",
+        "requires": {"Experimental technique": ["two-electrode voltage clamp"]}
+      },
+      "GeneClamp": {
+        "note": "Molecular Devices (Axon) GeneClamp amplifier; the article gives no model number.",
+        "requires": {"Experimental technique": ["two-electrode voltage clamp"]}
+      },
+      "FLUOstar Omega plate reader": {
+        "note": "BMG LABTECH FLUOstar Omega plate reader.",
+        "requires": {"Experimental technique": ["calcium imaging"]}
+      },
+      "CLARIOstar Omega plate reader (BMG Labtech)": {
+        "note": "Spelling of the article (Roberts et al. 2022).",
+        "requires": {"Experimental technique": ["calcium imaging"]}
+      },
+      "Olympus BX50WI": {
+        "requires": {"Experimental technique": ["calcium imaging"]}
+      },
+      "Olympus BX51WI": {
+        "requires": {"Experimental technique": ["calcium imaging"]}
+      },
+      "Andor iXon EMCCD": {
+        "requires": {"Experimental technique": ["calcium imaging"]}
+      }
+    },
+    "pending": {
+      "Manual": "Not in any article: replace by the amplifier the article names, or leave the cell empty.",
+      "manual two-electrode voltage clamp": "Not in any article: replace by the amplifier the article names, or leave the cell empty.",
+      "tungsten electrode SSR": "The suffix 'SSR' is not in any article. For the studies whose article refers to Dobritsa et al. 2003 the electrode is a glass electrode: pending decision on values given by reference."
+    }
+  },
+  "Type": {
+    "definition": "Quantity measured, implied by the technique.",
+    "allowed": {
+      "spiking frequency": {"requires": {"Experimental technique": ["single sensillum recording"]}},
+      "current amplitude": {"requires": {"Experimental technique": ["two-electrode voltage clamp"]}},
+      "∆ fluorescence": {"requires": {"Experimental technique": ["calcium imaging"]}}
+    },
+    "pending": {}
+  },
+  "Expression system": {
+    "definition": "Host in which the receptor is expressed and recorded: Drosophila olfactory neurons (in vivo), Xenopus oocytes, or HEK cells.",
+    "allowed": {
+      "Drosophila": {"requires": {"Experimental technique": ["single sensillum recording", "calcium imaging"]}},
+      "Xenopus oocytes": {"requires": {"Experimental technique": ["two-electrode voltage clamp"]}},
+      "HEK": {"requires": {"Experimental technique": ["calcium imaging"]}}
+    },
+    "pending": {}
+  },
+  "Expression cell type / line": {
+    "definition": "Neuron class (Drosophila) or cell line (HEK) in which the receptor is expressed, as named in the article. Empty for Xenopus oocytes.",
+    "allowed": {
+      "ab3A": {"note": "Empty neuron of the ab3 sensillum.", "requires": {"Expression system": ["Drosophila"]}},
+      "at1": {"note": "Neuron of the at1 (T1) trichoid sensillum.", "requires": {"Expression system": ["Drosophila"]}},
+      "ab2": {"note": "ab2 sensillum; the article gives no neuron letter.", "requires": {"Expression system": ["Drosophila"]}},
+      "HEK293": {"requires": {"Expression system": ["HEK"]}}
+    },
+    "pending": {
+      "TREx/HEK293": "Spelling of the T-REx HEK293 line to confirm in the article.",
+      "Xenopus oocyte": "Same as the Expression system: leave the cell empty, as the other oocyte studies do.",
+      "wild-type OSN": "Replace by the neuron class the article identifies."
+    }
+  },
+  "Expression driver": {
+    "definition": "Genetic element that drives expression of the receptor: the GAL4 line for Drosophila, the expression vector for Xenopus oocytes and HEK cells. Never a Kozak motif, a primer sequence, a genotype or the vector of a UAS responder.",
+    "allowed": {
+      "Or22a-Gal4": {"requires": {"Expression system": ["Drosophila"]}},
+      "Or67d-Gal4": {"note": "Or67d-GAL4 knock-in line (Dickson).", "requires": {"Expression system": ["Drosophila"]}},
+      "Orco-Gal4": {"requires": {"Expression system": ["Drosophila"]}},
+      "endogenous promoter": {"note": "Native receptor, no heterologous expression.", "requires": {"Expression system": ["Drosophila"]}},
+      "pGEMHE": {"requires": {"Expression system": ["Xenopus oocytes"]}},
+      "pT7Ts": {"requires": {"Expression system": ["Xenopus oocytes"]}},
+      "pcDNA4/TO": {"note": "Vector of Orco.", "requires": {"Expression system": ["HEK"]}},
+      "pcDNA5/TO": {"requires": {"Expression system": ["HEK"]}}
+    },
+    "pending": {
+      "pUAS": "Vector of the UAS responder, not a driver: replace by the GAL4 line of the article.",
+      "pSP64DV": "Vector name not found in the article.",
+      "SP6": "RNA polymerase promoter, not a vector."
+    }
+  },
+  "Co-transfection": {
+    "definition": "Calcium sensor or other transgene co-expressed in the recorded cells. The co-receptor goes in the Co-Receptor block. Empty when there is none.",
+    "allowed": {
+      "GCaMP6m": {"requires": {"Experimental technique": ["calcium imaging"]}},
+      "GCaMP6s": {"requires": {"Experimental technique": ["calcium imaging"]}},
+      "Cameleon 2.1": {"requires": {"Experimental technique": ["calcium imaging"]}}
+    },
+    "pending": {}
+  },
+  "Odor delivery system": {
+    "definition": "How the stimulus physically reaches the preparation.",
+    "allowed": {
+      "airborne paper": {"note": "Odorant on filter paper in a cartridge (Pasteur pipette or syringe), air pulse redirected into a continuous airstream.", "requires": {"Expression system": ["Drosophila"]}},
+      "airborne headspace": {"note": "Headspace of a vial or flask, sampled and injected into the airstream.", "requires": {"Expression system": ["Drosophila"]}},
+      "airborne no paper": {"note": "Compound applied directly in the cartridge, without filter paper, heated.", "requires": {"Expression system": ["Drosophila"]}},
+      "liquid": {"note": "Bath perfusion or microfluidic flow."}
+    },
+    "pending": {
+      "airstream": "The airstream is the carrier, not a delivery mode.",
+      "gas chromatography": "Pipette pulses are not gas chromatography: replace by the delivery mode of the article.",
+      "passive diffusion": "Capillary tip approached and put in contact with the sensillum: needs its own value."
+    }
+  }
+}

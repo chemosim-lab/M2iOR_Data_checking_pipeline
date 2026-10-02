@@ -9,7 +9,7 @@ M2iOR_Data_checking_pipeline/
 ├── main.py                              # Entry point: CLI and pipeline orchestration
 ├── registry.json                        # Persistent processing state for each study
 ├── excel_template.json                  # Reference schema for the expected Excel model
-├── assay_registry.json                  # Canonical spellings for the Assay free-text columns
+├── assay_vocabulary.json                # Allowed values (and definitions) of the Assay free-text columns
 │
 └── scripts/                              # Core business logic of the pipeline
     ├── columns.py                       # Expected column/group vocabulary for the Excel file
@@ -19,7 +19,7 @@ M2iOR_Data_checking_pipeline/
     ├── process_molecules.py             # Validation and enrichment of tested molecules
     ├── molecule_stereo.py               # Stereochemistry classification and image generation
     ├── process_responses.py             # Validation of experimental result columns
-    ├── process_assay.py                 # Casing/spacing normalization of Assay free-text columns
+    ├── process_assay.py                 # Allowed-value lists of the Assay free-text columns
     ├── process_sources.py               # Validation and enrichment of bibliographic references
     ├── fetch_data.py                    # Calls to external APIs (UniProt, NCBI, PubChem, doi.org)
     ├── fetch_blast.py                   # Remote BLAST search to identify an unknown sequence
@@ -34,7 +34,7 @@ M2iOR_Data_checking_pipeline/
         ├── split_by_doi.py              # Splits a multi-study Excel file into one file per study
         ├── backfill_stereo_images.py    # Regenerates structure images without rerunning the full pipeline
         ├── lookup_molecule.py           # Diagnoses a molecule row's Name/CID/CAS and suggests corrections
-        ├── build_assay_registry.py      # (Re)builds assay_registry.json from the curated corpus
+        ├── check_assay_vocabulary.py    # Lists the Assay values of Excel files that are outside the allowed lists
         └── get_common_name.py           # Translates a species name into an NCBI taxonomy identifier
 ```
 
@@ -68,7 +68,7 @@ M2iOR_Data_checking_pipeline/
 
 ### 5. Experimental responses
 - **`scripts/process_responses.py`** — checks that result columns (response, parameter, value, unit, technique...) contain only allowed values, and that every EC50 value (`Value nature` = `ec50`) is > 0: an EC50 is a concentration, so a value <= 0, usually a log10 (log EC50), blocks the export (`ec50_not_positive`). `Value` and `Concentration` must be cells the website import can read (a number, `<X`, `<=X`, `>X`, `>=X`, `=X` or a range `X1-X2`): anything else, such as `~12`, `N.A.` or `1,5`, would make the import skip the row, so it blocks the export (`invalid_value`).
-- **`scripts/process_assay.py`** — respells the Assay group's free-text columns (Recording System, Type, Expression system, Expression cell type / line, Expression driver, Odor delivery system) to `assay_registry.json`'s canonical spelling when a cell differs from it only in case or spacing (`assay_field_format`, auto_fix). These are open vocabularies (equipment and genetic constructs vary legitimately per study), so a cell with no registry match is left untouched rather than blocked. `scripts/tools/build_assay_registry.py` (re)builds the registry from the currently curated studies.
+- **`scripts/process_assay.py`** — restricts the Assay group's free-text columns (Recording System, Type, Expression system, Expression cell type / line, Expression driver, Co-transfection, Odor delivery system) to the closed lists of `assay_vocabulary.json`. Each column has a definition (what it holds, and what it must never hold, so that two columns are never confused), its allowed values, and its `pending` values: values still in curated files that no article supports. A cell that differs from an allowed value only in case, spacing or delta sign is respelled to the listed spelling (`assay_field_format`, auto_fix). A pending value is kept and reported (`assay_value_pending`, warning). Any other value blocks the export (`value_not_allowed`), with the closest allowed value as a suggestion: a new instrument, vector or neuron class is added to the list on purpose, with a note, after checking the article. A value can also declare what it is used with (`requires`): a recording system, a Type or a co-transfected sensor must match the row's Experimental technique, and a driver, a cell type or an odor delivery mode must match its Expression system, otherwise `assay_inconsistent` blocks the export (an oocyte amplifier on a fluorescence row, a plasmid as the driver of a Drosophila neuron). Experimental technique and the unit columns (Stimulation Flux Unit, Main Flux Unit, Stimulation duration unit) keep their closed lists in `scripts/process_responses.py`; `second` is an alias of `s`.
 
 ### 6. Bibliographic sources
 - **`scripts/process_sources.py`** — validates DOI format and replaces the reference with its full bibliographic version.
@@ -84,5 +84,5 @@ M2iOR_Data_checking_pipeline/
 ### 9. Ancillary tools (one-off usage, outside the main flow)
 - **`scripts/tools/split_by_doi.py`** — splits a multi-study Excel file into one file per study, ahead of the pipeline.
 - **`scripts/tools/lookup_molecule.py`** — looks up a molecule by name, CID, CAS, SMILES or InChIKey and diagnoses an Excel row's Name/CID/CAS consistency with the pipeline's own sources, cache and rules (`check_cid_cas` and `molecule_name_matches` in `scripts/process_molecules.py`); candidate corrections are re-checked with those rules. Read-only.
-- **`scripts/tools/build_assay_registry.py`** — (re)builds `assay_registry.json` by scanning every curated study's Assay columns; run again after a legitimately new equipment/construct name is added to a curated study.
+- **`scripts/tools/check_assay_vocabulary.py`** — lists, per column, the Assay values of Excel files (every study of `input/` by default) that are outside `assay_vocabulary.json` (blocking) or pending, with their studies and row counts. Offline and read-only; use it to see what a delivery or the corpus holds before extending a list.
 - **`scripts/extract_receptors.py`** — extracts the list of unique receptors (standalone utility).

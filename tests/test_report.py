@@ -8,7 +8,6 @@ import pytest
 
 from scripts.columns import (
     ACCESSION,
-    ASSAY,
     CANONICAL_NAME,
     CAS,
     CID,
@@ -22,7 +21,6 @@ from scripts.columns import (
     PARAMETER,
     RECEPTOR,
     RECEPTOR_NAME,
-    RECORDING_SYSTEM,
     RESPONSE,
     SEQUENCE,
     SOURCE,
@@ -32,9 +30,7 @@ from scripts.columns import (
     VALUE,
     VALUE_NATURE,
 )
-from scripts import process_assay
 from scripts.fetch_data import _BlastCandidate, _select_blast_candidates_non_interactive
-from scripts.process_assay import normalize_assay_field_format, registry_key
 from scripts.process_molecules import (
     _fill_molecule_names,
     cas_check_digit_ok,
@@ -757,44 +753,6 @@ def test_names_are_not_respelled_into_synonyms_with_lost_characters():
     )
     assert df[MOLECULE][MOLECULE_NAME].tolist() == ["exo-Brevicomin"]
     assert "molecule_name_format" not in {i.code for i in collector.issues}
-
-
-# --- assay field format -------------------------------------------------------
-
-
-def test_registry_key_ignores_case_and_repeated_whitespace():
-    assert registry_key("  OC-725C  Amplifier ") == "oc-725c amplifier"
-    assert registry_key("oc-725c amplifier") == "oc-725c amplifier"
-
-
-def test_assay_field_format_respells_case_only_difference(monkeypatch):
-    monkeypatch.setattr(
-        process_assay, "_REGISTRY", {RECORDING_SYSTEM: {"oc-725c": "OC-725C"}}
-    )
-    df = _frame({(ASSAY, RECORDING_SYSTEM): ["OC-725c", "OC-725C", None]})
-    collector = _collect(normalize_assay_field_format, df)
-
-    values = df[ASSAY][RECORDING_SYSTEM]
-    assert values.tolist()[:2] == ["OC-725C", "OC-725C"]
-    assert pd.isna(values.iloc[2])
-    (issue,) = collector.issues
-    assert issue.code == "assay_field_format"
-    assert issue.severity == "auto_fix"
-    assert issue.group == ASSAY
-    assert issue.column == RECORDING_SYSTEM
-    assert issue.value == "OC-725c"
-    assert issue.suggested_value == "OC-725C"
-
-
-def test_assay_field_format_leaves_unknown_values_untouched(monkeypatch):
-    monkeypatch.setattr(
-        process_assay, "_REGISTRY", {RECORDING_SYSTEM: {"oc-725c": "OC-725C"}}
-    )
-    df = _frame({(ASSAY, RECORDING_SYSTEM): ["a brand-new amplifier"]})
-    collector = _collect(normalize_assay_field_format, df)
-
-    assert df[ASSAY][RECORDING_SYSTEM].tolist() == ["a brand-new amplifier"]
-    assert collector.issues == []
 
 
 # --- BLAST -------------------------------------------------------------------
