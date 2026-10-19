@@ -6,6 +6,8 @@ output/
 # (no trailing slash, which would only match directories)
 input
 input_pending
+# Local processing state (contains local absolute paths)
+registry.json
 
 # Python
 __pycache__/
